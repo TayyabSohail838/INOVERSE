@@ -1,0 +1,16 @@
+{
+  "name": "inovix-cofounder",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2",
+    "next": "^15",
+    "react": "^19",
+    "react-dom": "^19",
+    "three": "^0.170.0"
+  }
+}
