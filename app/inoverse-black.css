@@ -686,7 +686,8 @@ body {
     font-size: clamp(44px, 6vw, 72px);
   }
   .stage-foot {
-    width: min(420px, 100% - 2 * var(--edge));
+    /* leave room for the role name on the left, so the caption doesn't run into it */
+    width: clamp(260px, 100% - 2 * var(--edge) - 480px, 420px);
   }
   .stage-notices {
     padding: 0 var(--edge);
@@ -694,47 +695,95 @@ body {
   }
 }
 
-/* ---------- phones ---------- */
+/* ---------- phones (portrait) ----------
+   From the bottom up: the dock (two rows of four, so every feature shows without
+   sideways scrolling), then the role on the left with Talk on the right, then the
+   caption or the conversation. Nothing overlaps. */
 @media (max-width: 760px) {
+  .app {
+    --bottom: calc(var(--edge) + env(safe-area-inset-bottom, 0px));
+    --dock-h: 112px;
+    --row: calc(var(--bottom) + var(--dock-h) + 12px); /* role + Talk row */
+    --above: calc(var(--row) + 92px); /* caption / conversation */
+  }
+  .brand {
+    top: calc(var(--edge) + env(safe-area-inset-top, 0px));
+  }
   .globe {
-    top: 44%;
-    width: min(88vw, 46vh);
+    top: 38%;
+    width: min(84vw, 40vh);
   }
   .brand-name {
-    font-size: 40px;
+    font-size: clamp(32px, 10vw, 40px);
   }
   .brand-sub {
     display: block;
   }
+  .toggles {
+    flex-wrap: wrap;
+  }
+  .toggles button {
+    padding: 6px 10px; /* easier to tap */
+  }
+  /* a dark fade behind the bottom half so text over the globe stays readable */
+  .stage::after {
+    content: "";
+    position: absolute;
+    inset: 45% 0 0 0;
+    z-index: 2;
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.7) 45%, rgba(0, 0, 0, 0.9));
+    pointer-events: none;
+  }
   .feed {
     top: auto;
-    bottom: calc(var(--edge) + 250px);
+    bottom: var(--above);
     right: var(--edge);
     left: var(--edge);
     width: auto;
   }
   .feed-list {
-    max-height: calc(var(--line) * 5);
+    max-height: calc(var(--line) * 6);
     font-size: 13px;
   }
   .feed-wrap {
     --edge-blur: 24px; /* the list is short on phones */
   }
-  .feed-try,
-  .feed-open {
+  .feed-try {
     display: none;
+  }
+  .feed-open {
+    padding: 6px 0;
+  }
+  /* while Inovo is listening or speaking, the caption takes the conversation's place */
+  .stage:has(.voice-caption) .feed {
+    opacity: 0;
+    pointer-events: none;
   }
   .role {
     left: var(--edge);
-    bottom: calc(var(--edge) + 150px);
+    right: calc(var(--edge) + 130px); /* stops before Talk */
+    bottom: var(--row);
   }
-  .role-name {
-    font-size: 40px;
+  .role-name,
+  .role-name.long {
+    font-size: clamp(30px, 9vw, 40px);
+    text-align: left;
+  }
+  .role-area {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .role-picker {
+    min-width: min(280px, calc(100vw - 2 * var(--edge)));
+    max-height: 55vh;
+    overflow-y: auto;
   }
   .stage-foot {
     left: auto;
     right: var(--edge);
-    bottom: calc(var(--edge) + 72px);
+    bottom: var(--row);
     width: auto;
     max-width: 60%;
     transform: none;
@@ -744,17 +793,201 @@ body {
     position: fixed;
     left: var(--edge);
     right: var(--edge);
-    bottom: calc(var(--edge) + 220px);
+    bottom: var(--above);
     width: auto;
+  }
+  .stage-error {
+    position: fixed;
+    left: var(--edge);
+    right: var(--edge);
+    bottom: calc(var(--row) + 60px);
   }
   .state-line {
     display: none;
   }
+  .talk {
+    padding: 12px 22px;
+  }
   .dock {
     left: var(--edge);
     right: var(--edge);
+    bottom: var(--bottom);
     transform: none;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .dock button {
+    min-width: 0;
+    padding: 9px 2px 7px;
+  }
+  .stage-notices {
+    top: calc(var(--edge) + 150px);
+  }
+
+  /* the panel covers the whole screen on phones */
+  .drawer-head {
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
+  }
+  .drawer-head h2 {
+    font-size: 26px;
+  }
+  .ov-close {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .drawer-body {
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .chat-panel .seg {
+    top: -16px;
+    margin: -16px -16px 16px;
+    padding: 10px 16px;
+  }
+  .ov-inline .ov-nav {
+    top: -16px;
+  }
+  .ask {
+    bottom: -16px;
+  }
+  /* 16px stops iPhones from zooming in when you tap a text box */
+  .drawer input,
+  .drawer select,
+  .drawer textarea,
+  .stage-notices input {
+    font-size: 16px;
+  }
+}
+
+/* ---------- very narrow phones (iPhone SE, small Androids) ---------- */
+@media (max-width: 360px) {
+  .dock button span {
+    font-size: 9px;
+  }
+  .talk {
+    padding: 11px 18px;
+  }
+}
+
+/* ---------- phones on their side, and other short screens ----------
+   Little height: the name and role get smaller, the dock goes back to one row at the
+   bottom centre, and the conversation moves to the top right. */
+@media (max-height: 560px) and (orientation: landscape) {
+  .app {
+    --bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .brand {
+    top: 12px;
+    left: calc(var(--edge) + env(safe-area-inset-left, 0px));
+  }
+  .brand-name {
+    font-size: 30px;
+  }
+  .brand-sub {
+    display: none;
+  }
+  .toggles {
+    margin-top: 4px;
+  }
+  .globe {
+    top: 46%;
+    width: min(62vh, 40vw);
+  }
+  .stage::after {
+    display: none;
+  }
+  .feed {
+    top: 12px;
+    bottom: auto;
+    left: auto;
+    right: calc(var(--edge) + env(safe-area-inset-right, 0px));
+    width: min(300px, 32vw);
+  }
+  .feed-list {
+    max-height: calc(var(--line) * 6);
+    font-size: 12px;
+  }
+  .feed-try {
+    display: none;
+  }
+  .stage:has(.voice-caption) .feed {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .role {
+    left: calc(var(--edge) + env(safe-area-inset-left, 0px));
+    right: auto;
+    bottom: var(--bottom, 10px);
+    max-width: 24vw;
+  }
+  .role-tag,
+  .role-area {
+    display: none;
+  }
+  .role-name,
+  .role-name.long {
+    font-size: clamp(24px, 4vw, 34px);
+  }
+  .role-picker {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .dock {
+    left: 50%;
+    right: auto;
+    bottom: var(--bottom, 10px);
+    transform: translateX(-50%);
+    display: flex;
+    max-width: calc(100% - 2 * 23vw - 2 * var(--edge));
+    overflow-x: auto;
+  }
+  .dock button {
+    min-width: 40px;
+    padding: 6px 3px 4px;
+  }
+  .stage-foot {
+    left: auto;
+    right: calc(var(--edge) + env(safe-area-inset-right, 0px));
+    bottom: var(--bottom, 10px);
+    width: auto;
+    max-width: 24vw;
+    transform: none;
+    align-items: flex-end;
+  }
+  .stage-foot .voice-caption {
+    position: fixed;
+    left: 24vw;
+    right: 24vw;
+    bottom: calc(var(--bottom, 10px) + 70px);
+    width: auto;
+  }
+  .vc-text {
+    max-height: 2.9em;
+  }
+  .state-line {
+    display: none;
+  }
+  .talk {
+    padding: 10px 18px;
+  }
+  .stage-notices {
+    top: 12px;
+    padding: 0 calc(var(--edge) + 34vw) 0 calc(var(--edge) + 30vw);
+  }
+}
+
+/* touch screens: no hover, so give buttons a pressed look instead */
+@media (hover: none) {
+  .talk:hover,
+  .lp-btn:hover,
+  .lp-card:hover,
+  .lp-roles button:hover {
+    transform: none;
+  }
+  .talk:active,
+  .dock button:active,
+  .lp-btn:active {
+    transform: scale(0.97);
   }
 }
 

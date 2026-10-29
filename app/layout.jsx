@@ -7,7 +7,14 @@ export const metadata = {
   description: "Inoverse: talk with Inovo, the AI cofounder that checks the gaps before you build. Runs on Gemma.",
 };
 
-export const viewport = { themeColor: "#000000" };
+// viewportFit "cover": the page fills the whole screen on phones with a notch;
+// the CSS keeps buttons clear of it with env(safe-area-inset-*).
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#000000",
+};
 
 export default function RootLayout({ children }) {
   return (

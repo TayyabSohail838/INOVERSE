@@ -285,7 +285,7 @@ export default function LandingPage({ onEnter }) {
                 </li>
               ))}
             </ul>
-            <p className="lp-note">Hover an executive to see their colour.</p>
+            <p className="lp-note">Hover or tap an executive to see their colour.</p>
           </div>
         </section>
 
