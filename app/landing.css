@@ -511,6 +511,12 @@
   font-size: 12px;
   color: var(--cotton-dim);
 }
+.lp-foot > :first-child {
+  justify-self: start;
+}
+.lp-foot > :nth-child(2) {
+  justify-self: center;
+}
 .lp-foot > :last-child {
   justify-self: end;
 }
@@ -607,6 +613,7 @@
     gap: 4px;
     justify-items: center;
   }
+  .lp-foot > :first-child,
   .lp-foot > :last-child {
     justify-self: center;
   }
