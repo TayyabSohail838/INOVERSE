@@ -2,7 +2,7 @@
 // Simulate: a MiroFish-style market simulation run by Inovo.
 // Compare ranks every Inovix product; Simulate one runs brief → personas → 2 rounds → report.
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { api, cached } from "@/lib/api";
 
 const DECISIONS = [
   ["buy", "Buy"],
@@ -28,7 +28,7 @@ const save = (patch) => {
 
 export default function SimulatePanel({ lang, onSpeak }) {
   const [view, setView] = useState("compare");
-  const [meta, setMeta] = useState({ products: [], scenarios: [] });
+  const [meta, setMeta] = useState(() => cached("/api/simulate") || { products: [], scenarios: [] });
   const [error, setError] = useState("");
 
   useEffect(() => {

@@ -2,7 +2,7 @@
 // People: leads, clients and partners, with a follow-up date for each.
 // Inovo drafts the message; one tap opens WhatsApp with it already typed.
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, cached } from "@/lib/api";
 
 const STAGES = [
   ["lead", "Lead"],
@@ -57,14 +57,14 @@ function FollowupDate({ label, iso, onSave }) {
 const EMPTY = { name: "", phone: "", org: "", role: "", stage: "lead", followup: "", notes: "" };
 
 export default function PeoplePanel({ dbReady, lang }) {
-  const [people, setPeople] = useState([]);
+  const [people, setPeople] = useState(() => cached("/api/people?all=1")?.contacts || []);
   const [filter, setFilter] = useState("due");
   const [form, setForm] = useState(EMPTY);
   const [adding, setAdding] = useState(false);
   const [drafts, setDrafts] = useState({}); // id → { loading, message }
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [demo, setDemo] = useState(false); // public link: sample people, read-only
+  const [demo, setDemo] = useState(() => Boolean(cached("/api/people?all=1")?.demo)); // public link: sample people, read-only
 
   const load = useCallback(async () => {
     try {

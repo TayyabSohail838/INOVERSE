@@ -1,7 +1,7 @@
 "use client";
 // Evidence, Tests, Weekly review and Company tabs. Each reads and writes through /api.
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, cached } from "@/lib/api";
 
 const shortDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const daysSince = (d) => Math.max(0, Math.floor((Date.now() - Date.parse(d)) / 864e5));
@@ -16,7 +16,7 @@ function NeedsDb({ what }) {
 }
 
 function useList(path, key, enabled) {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => cached(path)?.[key] || []);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     try {
@@ -136,7 +136,7 @@ const STATUSES = [
 ];
 
 export function TestsPanel({ dbReady }) {
-  const [data, setData] = useState({ experiments: [], gapChecks: [] });
+  const [data, setData] = useState(() => cached("/api/experiments") || { experiments: [], gapChecks: [] });
   const [drafts, setDrafts] = useState({});
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
@@ -238,8 +238,9 @@ const C_STATUS = [
 ];
 
 export function WeeklyPanel({ dbReady, lang, onSpeak }) {
-  const { items, error, setError, load } = useList("/api/commitments", "commitments", dbReady);
+  const { items, setItems, error, setError, load } = useList("/api/commitments", "commitments", dbReady);
   const [form, setForm] = useState({ name: "", owner: "", next_action: "" });
+  const [adding, setAdding] = useState(false);
   const [updates, setUpdates] = useState("");
   const [result, setResult] = useState(null);
   const [running, setRunning] = useState(false);
@@ -247,12 +248,17 @@ export function WeeklyPanel({ dbReady, lang, onSpeak }) {
 
   async function add(e) {
     e.preventDefault();
+    if (adding) return; // one at a time, so a double click can't add it twice
+    setAdding(true);
     try {
-      await api("/api/commitments", { method: "POST", body: form });
+      const r = await api("/api/commitments", { method: "POST", body: form });
+      if (r.commitment) setItems((xs) => [...xs, r.commitment]);
       setForm({ name: "", owner: "", next_action: "" });
-      await load();
+      load();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -339,7 +345,7 @@ export function WeeklyPanel({ dbReady, lang, onSpeak }) {
             <input value={form.next_action} onChange={(e) => setForm({ ...form, next_action: e.target.value })} placeholder="Call 3 mill owners" />
           </label>
         </div>
-        <button className="btn quiet" disabled={!form.name.trim()}>Add commitment</button>
+        <button className="btn quiet" disabled={adding || !form.name.trim()}>{adding ? "Adding…" : "Add commitment"}</button>
       </form>
 
       <h2>Run the weekly review</h2>
@@ -393,50 +399,70 @@ export function WeeklyPanel({ dbReady, lang, onSpeak }) {
 const STAGES = ["idea", "prototype", "pilot", "live", "paying", "paused"];
 
 export function CompanyPanel({ dbReady }) {
-  const [data, setData] = useState(null);
-  const [profile, setProfile] = useState({ name: "", about: "" });
+  const first = cached("/api/company");
+  const [data, setData] = useState(first || null);
+  const [profile, setProfile] = useState({ name: first?.profile?.name || "", about: first?.profile?.about || "" });
   const [member, setMember] = useState({ name: "", role: "" });
   const [product, setProduct] = useState({ name: "", description: "", stage: "idea" });
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
+  const [busy, setBusy] = useState(""); // what is saving right now, e.g. "team"
 
   const load = useCallback(async () => {
     try {
       const d = await api("/api/company");
       setData(d);
-      setProfile({ name: d.profile?.name || "", about: d.profile?.about || "" });
+      return d;
     } catch (e) {
       setError(e.message);
     }
   }, []);
   useEffect(() => {
-    if (dbReady) load();
+    if (!dbReady) return;
+    // fill the form from the server, unless the founder is already typing in it
+    load().then((d) => d && setProfile((p) => (p.name || p.about ? p : { name: d.profile?.name || "", about: d.profile?.about || "" })));
   }, [dbReady, load]);
   if (!dbReady) return <NeedsDb what="your company details" />;
 
-  const call = async (fn, msg) => {
+  // Save one change. The screen updates as soon as the server says yes (apply), then
+  // re-reads everything quietly in the background. One save at a time, so a double
+  // click can't add the same person twice.
+  const call = async (what, fn, { msg, apply } = {}) => {
+    if (busy) return false;
+    setBusy(what);
     setError("");
     setSaved("");
     try {
-      await fn();
-      await load();
+      const r = await fn();
+      if (apply) setData((d) => (d ? apply(d, r) : d));
       if (msg) setSaved(msg);
+      load();
+      return true;
     } catch (e) {
       setError(e.message);
+      return false;
+    } finally {
+      setBusy("");
     }
   };
 
   return (
     <div className="stack">
       <p className="lead">Everything here is read by Inovo before every answer. Keep it current.</p>
-      {error && <p className="error" role="alert">{error}</p>}
-      {saved && <p className="ok" role="status">{saved}</p>}
+      {(error || saved) && (
+        <p className={`flash ${error ? "error" : "ok"}`} role={error ? "alert" : "status"}>
+          {error || saved}
+        </p>
+      )}
 
       <form
         className="card form"
         onSubmit={(e) => {
           e.preventDefault();
-          call(() => api("/api/company", { method: "PUT", body: profile }), "Company details saved.");
+          call("profile", () => api("/api/company", { method: "PUT", body: profile }), {
+            msg: "Company details saved.",
+            apply: (d, r) => ({ ...d, profile: r.profile || d.profile }),
+          });
         }}
       >
         <label>
@@ -447,7 +473,7 @@ export function CompanyPanel({ dbReady }) {
           About the company
           <textarea rows={6} value={profile.about} onChange={(e) => setProfile({ ...profile, about: e.target.value })} placeholder="What you do, who you sell to, how you make money, what stage you're at" />
         </label>
-        <button className="btn quiet" disabled={!profile.name.trim()}>Save company details</button>
+        <button className="btn quiet" disabled={!!busy || !profile.name.trim()}>{busy === "profile" ? "Saving…" : "Save company details"}</button>
       </form>
 
       <h2>Team</h2>
@@ -456,15 +482,30 @@ export function CompanyPanel({ dbReady }) {
           <li key={m.id} className="history">
             <span className="item-title">{m.name}</span>
             <span className="muted">{m.role}</span>
-            <button className="link danger" onClick={() => call(() => api(`/api/team/${m.id}`, { method: "DELETE" }))}>Remove</button>
+            <button
+              className="link danger"
+              disabled={!!busy}
+              onClick={() =>
+                call("team", () => api(`/api/team/${m.id}`, { method: "DELETE" }), {
+                  msg: `${m.name} removed.`,
+                  apply: (d) => ({ ...d, team: d.team.filter((x) => x.id !== m.id) }),
+                })
+              }
+            >
+              Remove
+            </button>
           </li>
         ))}
       </ul>
       <form
         className="row form"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          call(() => api("/api/team", { method: "POST", body: member })).then(() => setMember({ name: "", role: "" }));
+          const ok = await call("team", () => api("/api/team", { method: "POST", body: member }), {
+            msg: `${member.name.trim()} added to the team.`,
+            apply: (d, r) => ({ ...d, team: [...d.team, r.member] }),
+          });
+          if (ok) setMember({ name: "", role: "" });
         }}
       >
         <label>
@@ -475,7 +516,7 @@ export function CompanyPanel({ dbReady }) {
           Role
           <input value={member.role} onChange={(e) => setMember({ ...member, role: e.target.value })} placeholder="Full-stack" />
         </label>
-        <button className="btn quiet" disabled={!member.name.trim()}>Add</button>
+        <button className="btn quiet" disabled={!!busy || !member.name.trim()}>{busy === "team" ? "Adding…" : "Add"}</button>
       </form>
 
       <h2>Products</h2>
@@ -486,21 +527,45 @@ export function CompanyPanel({ dbReady }) {
             <select
               aria-label={`Stage of ${p.name}`}
               value={p.stage}
-              onChange={(e) => call(() => api(`/api/products/${p.id}`, { method: "PATCH", body: { stage: e.target.value } }))}
+              disabled={!!busy}
+              onChange={(e) => {
+                const stage = e.target.value;
+                const setStage = (d, s) => ({ ...d, products: d.products.map((x) => (x.id === p.id ? { ...x, stage: s } : x)) });
+                const before = p.stage;
+                setData((d) => setStage(d, stage)); // show the new stage straight away
+                call("product", () => api(`/api/products/${p.id}`, { method: "PATCH", body: { stage } }), {
+                  msg: `${p.name} is now ${stage}.`,
+                }).then((ok) => ok || setData((d) => setStage(d, before)));
+              }}
             >
               {STAGES.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-            <button className="link danger" onClick={() => call(() => api(`/api/products/${p.id}`, { method: "DELETE" }))}>Remove</button>
+            <button
+              className="link danger"
+              disabled={!!busy}
+              onClick={() =>
+                call("product", () => api(`/api/products/${p.id}`, { method: "DELETE" }), {
+                  msg: `${p.name} removed.`,
+                  apply: (d) => ({ ...d, products: d.products.filter((x) => x.id !== p.id) }),
+                })
+              }
+            >
+              Remove
+            </button>
           </li>
         ))}
       </ul>
       <form
         className="card form"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          call(() => api("/api/products", { method: "POST", body: product })).then(() => setProduct({ name: "", description: "", stage: "idea" }));
+          const ok = await call("newProduct", () => api("/api/products", { method: "POST", body: product }), {
+            msg: `${product.name.trim()} added.`,
+            apply: (d, r) => ({ ...d, products: [...d.products, r.product] }),
+          });
+          if (ok) setProduct({ name: "", description: "", stage: "idea" });
         }}
       >
         <div className="row">
@@ -521,7 +586,7 @@ export function CompanyPanel({ dbReady }) {
           What it does
           <input value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} />
         </label>
-        <button className="btn quiet" disabled={!product.name.trim()}>Add product</button>
+        <button className="btn quiet" disabled={!!busy || !product.name.trim()}>{busy === "newProduct" ? "Adding…" : "Add product"}</button>
       </form>
     </div>
   );

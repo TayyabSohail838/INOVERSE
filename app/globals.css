@@ -612,6 +612,18 @@ textarea {
   font-size: var(--step--1);
 }
 
+/* a save message stays in view while the panel is scrolled */
+.flash {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 14%, #0b0b0f);
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+}
+
 .empty {
   padding: 8px 0;
   color: var(--cotton-dim);

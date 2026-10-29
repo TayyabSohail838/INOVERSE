@@ -2,7 +2,7 @@
 // Tasks panel: your upcoming tasks and meetings (Inovo reads them before every answer),
 // plus the Google (Gmail + Calendar) and WhatsApp connections.
 import { useCallback, useEffect, useState } from "react";
-import { api, getAccessCode } from "@/lib/api";
+import { api, cached, getAccessCode } from "@/lib/api";
 
 const dueText = (iso) => {
   if (!iso) return "No date";
@@ -28,11 +28,11 @@ const meetingWhen = (m) => {
 };
 
 export default function TasksPanel({ dbReady }) {
-  const [tasks, setTasks] = useState([]);
-  const [gmail, setGmail] = useState(null);
-  const [cal, setCal] = useState(null); // { granted, meetings, error }
-  const [wa, setWa] = useState(null); // WhatsApp bot status
-  const [demo, setDemo] = useState(false); // public link: sample data, read-only
+  const [tasks, setTasks] = useState(() => cached("/api/tasks")?.tasks || []);
+  const [gmail, setGmail] = useState(() => cached("/api/google") || null);
+  const [cal, setCal] = useState(() => cached("/api/meetings") || null); // { granted, meetings, error }
+  const [wa, setWa] = useState(() => cached("/api/whatsapp/status") || null); // WhatsApp bot status
+  const [demo, setDemo] = useState(() => Boolean(cached("/api/tasks")?.demo)); // public link: sample data, read-only
   const [form, setForm] = useState({ title: "", due: "", notes: "" });
   const [error, setError] = useState("");
   const [note, setNote] = useState("");

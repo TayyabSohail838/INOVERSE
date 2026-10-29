@@ -1,7 +1,7 @@
 "use client";
 // The whole app: the woven 3D cofounder on the left, the working panel on the right.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, setAccessCode, getAccessCode } from "@/lib/api";
+import { api, prefetch, setAccessCode, getAccessCode } from "@/lib/api";
 import { EvidencePanel, TestsPanel, WeeklyPanel, CompanyPanel } from "@/components/Panels";
 import Markdown, { plainText } from "@/components/Markdown";
 import { toWavBase64 } from "@/lib/wav";
@@ -86,6 +86,8 @@ export default function CofounderApp() {
       const s = await fetch("/api/status").then((r) => r.json());
       setStatus(s);
       if (s.supabase?.ok) {
+        // load every panel's data now, so opening a panel shows it straight away
+        prefetch(PANEL_DATA);
         const { messages } = await api("/api/messages");
         // saved history first; keep anything already on screen this visit (like the greeting)
         setLog((cur) => [...messages.map((m) => ({ role: m.role, text: m.text, skill: m.skill })), ...cur.filter((m) => m.live)]);
@@ -1024,6 +1026,20 @@ export default function CofounderApp() {
 }
 
 // The dock: one icon per feature, each opens a slide-in panel.
+// what each dock panel reads when it opens
+const PANEL_DATA = [
+  "/api/company",
+  "/api/tasks",
+  "/api/google",
+  "/api/meetings",
+  "/api/whatsapp/status",
+  "/api/people?all=1",
+  "/api/simulate",
+  "/api/evidence",
+  "/api/experiments",
+  "/api/commitments",
+];
+
 const DOCK = [
   { key: "chat", label: "Chat", title: "Chat with Inovo" },
   { key: "tasks", label: "Tasks", title: "Tasks & meetings" },
