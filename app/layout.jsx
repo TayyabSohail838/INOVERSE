@@ -5,6 +5,15 @@ import "./landing.css";
 export const metadata = {
   title: "Inoverse",
   description: "Inoverse: talk with Inovo, the AI cofounder that checks the gaps before you build. Runs on Gemma.",
+  // "?v=2" makes browsers fetch the icon fresh instead of reusing a cached "no icon"
+  icons: {
+    icon: [
+      { url: "/favicon.ico?v=2", sizes: "any" },
+      { url: "/icon-32.png?v=2", type: "image/png", sizes: "32x32" },
+      { url: "/icon-192.png?v=2", type: "image/png", sizes: "192x192" },
+    ],
+    apple: { url: "/apple-icon.png?v=2", sizes: "180x180" },
+  },
 };
 
 // viewportFit "cover": the page fills the whole screen on phones with a notch;
