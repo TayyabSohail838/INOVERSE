@@ -105,6 +105,10 @@ export default function LandingPage({ onEnter }) {
       m.x = lerp(a.x, b.x, t) * (phone ? PHONE.x : 1);
       m.y = phone ? PHONE.y - Math.min(1, top / vh) * 0.6 : lerp(a.y, b.y, t);
       m.scale = lerp(a.scale, b.scale, t) * (phone ? PHONE.scale : 1);
+      // the globe's size follows the screen height, so on a tall, narrow phone the
+      // bigger scenes (the hero most of all) would spill past the sides.
+      // Cap it at about 85% of the screen width. 1.34 = half the visible height in 3D units.
+      if (phone) m.scale = Math.min(m.scale, 0.85 * 1.34 * (box.clientWidth / vh));
       m.rot = lerp(a.rot, b.rot, t);
       m.blob = lerp(a.blob, b.blob, t);
       const dt = Math.max(1, now - lastT);
