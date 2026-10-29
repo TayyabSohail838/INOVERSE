@@ -28,17 +28,22 @@ function announce(reply, lang) {
 // Pull the real say/details back out so the voice never reads JSON aloud.
 function unwrap(out) {
   for (let i = 0; i < 2; i++) {
-    const inner = [out?.say, out?.details].find((v) => typeof v === "string" && /^\s*\{[\s\S]*"say"\s*:/.test(v));
+    // JSON, possibly inside a ```json fence
+    const inner = [out?.say, out?.details].find((v) => typeof v === "string" && /^\s*(```\w*\s*)?\{[\s\S]*"say"\s*:/.test(v));
     if (!inner) break;
     try {
       const parsed = JSON.parse(inner.slice(inner.indexOf("{"), inner.lastIndexOf("}") + 1));
       out = { say: parsed.say || "", details: parsed.details || parsed.say || "" };
     } catch {
-      // half-broken JSON: take the text of "say" by pattern
-      const m = inner.match(/"say"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-      if (!m) break;
-      const say = m[1].replace(/\\n/g, " ").replace(/\\"/g, '"');
-      out = { say, details: out.details && out.details !== inner ? out.details : say };
+      // half-broken JSON: take the text of "say" and "details" by pattern
+      const field = (k) => inner.match(new RegExp(`"${k}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`))?.[1];
+      const unescape = (s) => s.replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+      const rawSay = field("say");
+      if (!rawSay) break;
+      const say = unescape(rawSay).replace(/\s*\n\s*/g, " ");
+      const rawDetails = field("details");
+      const details = rawDetails ? unescape(rawDetails) : out.details && out.details !== inner ? out.details : say;
+      out = { say, details };
     }
   }
   return out;
@@ -106,9 +111,10 @@ export const POST = route(async (req) => {
       out = await gemma(msg, { system, history: hist, json: true, fast: true });
     } catch (err) {
       if (err.busy) throw err; // Google is overloaded: asking again would only run past the time limit
-      // Model ignored the JSON format: speak the first sentence, show everything
+      // Model ignored the JSON format: speak the first sentence, show everything.
+      // If it sent broken JSON instead, hand the whole text to unwrap() below.
       const t = await gemma(msg, { system, history: hist, fast: true });
-      out = { say: t.split(/(?<=[.!?])\s/)[0], details: t };
+      out = /"say"\s*:/.test(t) ? { say: t, details: t } : { say: t.split(/(?<=[.!?])\s/)[0], details: t };
     }
     out = unwrap(out);
     reply = { skill, say: out.say || "", details: out.details || out.say || "" };

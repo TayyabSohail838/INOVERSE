@@ -27,7 +27,7 @@ cp .env.example .env.local
    ```
    GEMMA_MODEL=gemma-4-26b-a4b-it
    ```
-   If the main model is down on Google's side, the app switches to `gemma-4-26b-a4b-it` for 5 minutes by itself (`GEMMA_FALLBACK_MODEL`, or `off`).
+   If the main model is down on Google's side, the app moves on to backups by itself: `gemma-4-26b-a4b-it`, then `gemini-3.5-flash-lite` (`GEMMA_FALLBACK_MODEL`, a comma-separated list, or `off`).
 5. Voice input (the Talk button) is transcribed with `gemini-3.5-flash` on the same key, because Gemma 4 31B cannot take audio. To change it, set `TRANSCRIBE_MODEL`.
    Everyday conversation uses the quicker `gemma-4-26b-a4b-it` with minimal thinking so spoken replies come back in seconds (`GEMMA_FAST_MODEL`). The gap check and weekly review use `GEMMA_MODEL`.
 6. **Live voice** (the **Live** toggle, on by default): Talk opens a real-time conversation with Gemini Live (`gemini-3.8-live`; set `LIVE_MODEL` to change). Inovo starts answering about a second after you stop talking, instead of ~20 s. Gemma stays the brain for every skill: when you ask for a simulation, your emails, a gap check, a quote, pricing or a website, Live calls the `inovo_brain` tool, which runs the normal Gemma route (`/api/cofounder`) and shows the full answer on screen. Your API key stays on the server; the browser gets a single-use token from `/api/live`. While Inovo talks the mic is paused so it can't hear itself: press **Skip** to cut it short, **End** to finish. Turn Live off for the older record → answer → speak voice; if Live can't start, Talk falls back to it by itself.
