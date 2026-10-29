@@ -1123,6 +1123,13 @@ a.btn {
 .ov-tag.v-go {
   color: var(--malachite);
 }
+/* 48-hour test status: grey until it is running */
+.ov-tag.st-planned {
+  color: var(--cotton-dim);
+}
+.ov-tag.st-running {
+  color: var(--turmeric);
+}
 .ov-convo li {
   padding: 8px 12px;
   border-radius: var(--radius-sm);

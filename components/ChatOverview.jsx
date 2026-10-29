@@ -219,7 +219,7 @@ export default function ChatOverview({ open, onClose, log, dbReady, inline = fal
                     .filter((e) => e.status === "planned" || e.status === "running")
                     .map((e) => (
                       <li key={e.id}>
-                        <span className="ov-tag">{e.status}</span>
+                        <span className={`ov-tag st-${e.status}`}>{e.status}</span>
                         {clip(e.name, 120)}
                       </li>
                     ))}
