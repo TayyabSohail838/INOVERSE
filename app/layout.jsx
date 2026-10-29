@@ -1,5 +1,6 @@
 import "./globals.css";
 import "./inoverse-black.css";
+import "./landing.css";
 
 export const metadata = {
   title: "Inoverse",

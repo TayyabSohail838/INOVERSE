@@ -127,7 +127,14 @@ const LOOK = {
   speaking: { amp: 0.055, freq: 1.7, speed: 0.55, hue: 0.08, glow: 0.4, ripple: 0 },
 };
 
-export default function Globe({ state, levelRef, color, color2 }) {
+// motionRef (optional, used by the landing page): where the globe should be and how it moves.
+//   x, y   position as a fraction of half the screen (-1 left/bottom … 1 right/top)
+//   scale  size (1 = normal)
+//   rot    extra turn in radians (the landing turns it as you scroll)
+//   blob   0-1: how much the sphere melts into an organic, liquid blob
+//   energy 0-1: a burst of wobble (the landing feeds in how fast you scroll)
+// The globe glides toward these values, so they can jump between sections.
+export default function Globe({ state, levelRef, color, color2, motionRef, className = "" }) {
   const wrapRef = useRef(null);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -210,6 +217,9 @@ export default function Globe({ state, levelRef, color, color2 }) {
     let spin = 0;
     let last = performance.now();
     let raf;
+    // landing-page motion, eased toward motionRef
+    const mo = { x: 0, y: 0, scale: 1, rot: 0, blob: 0, energy: 0 };
+    const screenPos = new THREE.Vector3();
 
     const frame = (now) => {
       raf = requestAnimationFrame(frame);
@@ -232,9 +242,27 @@ export default function Globe({ state, levelRef, color, color2 }) {
       for (const key of Object.keys(look)) look[key] += (goal[key] - look[key]) * k;
 
       const calm = still ? 0.3 : 1;
-      uniforms.uPhase.value += dt * (look.speed + (st === "speaking" ? level * 0.8 : 0)) * calm;
-      uniforms.uAmp.value = (look.amp + (st === "speaking" ? level * 0.22 : st === "listening" ? level * 0.06 : 0)) * calm;
-      uniforms.uFreq.value = look.freq + (st === "speaking" ? level * 0.6 : 0);
+
+      // landing motion: glide (slowly, like something heavy in liquid) toward the targets
+      const want = motionRef?.current;
+      if (want && !mo.started) {
+        Object.assign(mo, want, { energy: 0, started: true }); // start where the page says, no glide in from the middle
+      }
+      if (want) {
+        const glide = 1 - Math.exp(-dt * (still ? 6 : 2.2));
+        for (const key of ["x", "y", "scale", "rot", "blob"]) mo[key] += ((want[key] ?? mo[key]) - mo[key]) * glide;
+        // energy kicks in fast and settles slowly, like a wobble dying down
+        const e = Math.min(1, want.energy || 0);
+        mo.energy += (e - mo.energy) * (e > mo.energy ? 0.25 : 0.04);
+      }
+      const blob = mo.blob * calm;
+      const energy = mo.energy * calm;
+
+      uniforms.uPhase.value += dt * (look.speed * (1 - blob * 0.35) + (st === "speaking" ? level * 0.8 : 0) + energy * 1.6) * calm;
+      uniforms.uAmp.value =
+        (look.amp + (st === "speaking" ? level * 0.22 : st === "listening" ? level * 0.06 : 0)) * calm + blob * 0.17 + energy * 0.12;
+      // a melted blob uses big slow shapes; the wobble from scrolling adds finer ones
+      uniforms.uFreq.value = (look.freq + (st === "speaking" ? level * 0.6 : 0)) * (1 - blob * 0.45) + energy * 0.8;
       ripplePhase += dt * (5 + level * 6);
       uniforms.uRipplePhase.value = ripplePhase;
       uniforms.uRipple.value = still ? 0 : look.ripple + (st === "listening" ? level * 0.035 : 0);
@@ -253,14 +281,28 @@ export default function Globe({ state, levelRef, color, color2 }) {
       mx += (px - mx) * ease;
       my += (py - my) * ease;
       const reach = still ? 0.4 : 1;
-      mesh.rotation.y = spin + mx * 1.1 * reach;
-      mesh.rotation.x = my * 0.8 * reach;
-      mesh.position.set(mx * 0.22 * reach, -my * 0.16 * reach, 0);
+      // half the visible width/height in 3D units at the globe's depth (camera fov 30, distance 5)
+      const halfH = Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
+      const halfW = halfH * camera.aspect;
+      mesh.rotation.y = spin + mx * 1.1 * reach + mo.rot;
+      mesh.rotation.x = my * 0.8 * reach + mo.rot * 0.25;
+      mesh.rotation.z = Math.sin(mo.rot * 0.5) * 0.3;
+      mesh.position.set(mo.x * halfW + mx * 0.22 * reach, mo.y * halfH - my * 0.16 * reach, 0);
       uniforms.uLight.value.set(-0.25 + mx * 1.6, 0.45 - my * 1.6, 0.75).normalize();
       wrap.style.setProperty("--mx", mx.toFixed(3));
       wrap.style.setProperty("--my", my.toFixed(3));
-      const scale = 1 + (st === "speaking" ? level * 0.06 : st === "listening" ? level * 0.03 : 0);
+      const scale = (1 + (st === "speaking" ? level * 0.06 : st === "listening" ? level * 0.03 : 0)) * mo.scale;
       mesh.scale.setScalar(scale);
+
+      // where the globe is on screen, so the landing page can keep its glow and rings on it
+      if (want) {
+        screenPos.copy(mesh.position).project(camera);
+        const w = wrap.clientWidth;
+        const h = wrap.clientHeight;
+        wrap.style.setProperty("--gx", `${(((screenPos.x + 1) / 2) * w).toFixed(1)}px`);
+        wrap.style.setProperty("--gy", `${(((1 - screenPos.y) / 2) * h).toFixed(1)}px`);
+        wrap.style.setProperty("--gr", `${((h / 2 / halfH) * scale).toFixed(1)}px`);
+      }
 
       // for the CSS halo behind the canvas
       wrap.style.setProperty("--lvl", level.toFixed(3));
@@ -278,10 +320,10 @@ export default function Globe({ state, levelRef, color, color2 }) {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [levelRef]);
+  }, [levelRef, motionRef]);
 
   return (
-    <div className={`globe g-${state}`} ref={wrapRef} aria-hidden="true">
+    <div className={`globe g-${state} ${className}`} ref={wrapRef} aria-hidden="true">
       <div className="globe-halo" />
       <div className="globe-rings">
         <i />

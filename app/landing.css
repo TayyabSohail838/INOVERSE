@@ -1,0 +1,620 @@
+/* =====================================================================
+   Inoverse landing page (components/LandingPage.jsx).
+   Same design language as the app (see DESIGN.md): pure black, Anton
+   headings, Futura/Jost text, the current role's colour as the only accent.
+   One liquid globe sits fixed behind the page and travels with the scroll.
+   ===================================================================== */
+.lp {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  color: var(--cotton);
+  font-family: var(--font);
+  overflow: hidden;
+}
+
+/* ---------- the globe behind the page ---------- */
+.globe.globe-stage {
+  position: fixed;
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  transform: none;
+  z-index: 0;
+  animation: none;
+  opacity: 0;
+  transition: opacity 1.2s ease 0.1s;
+}
+.lp.ready .globe.globe-stage {
+  opacity: 1;
+}
+/* glow and rings follow the globe (Globe.jsx sets --gx, --gy, --gr) */
+.globe-stage .globe-halo {
+  inset: auto;
+  left: var(--gx, 50%);
+  top: var(--gy, 50%);
+  width: calc(var(--gr, 200px) * 3.2);
+  height: calc(var(--gr, 200px) * 3.2);
+  transform: translate(-50%, -50%) scale(calc(0.92 + var(--lvl, 0) * 0.18));
+  opacity: calc(0.55 + var(--lvl, 0) * 0.8);
+}
+.globe-stage .globe-rings {
+  inset: auto;
+  left: var(--gx, 50%);
+  top: var(--gy, 50%);
+  width: calc(var(--gr, 200px) * 2);
+  height: calc(var(--gr, 200px) * 2);
+  transform: translate(-50%, -50%);
+}
+
+/* ---------- loader ---------- */
+.lp-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--edge);
+  background: #000;
+  pointer-events: none;
+  transition: opacity 0.7s ease, visibility 0.7s;
+}
+.lp.ready .lp-loader {
+  opacity: 0;
+  visibility: hidden;
+}
+.lp-loader-name {
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--cotton-dim);
+}
+.lp-loader-pct {
+  font-family: var(--display);
+  font-size: clamp(72px, 14vw, 220px);
+  line-height: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- top bar ---------- */
+.lp-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--edge) * 0.7) var(--edge);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease 0.4s;
+}
+.lp.ready .lp-nav {
+  opacity: 1;
+}
+.lp-nav > * {
+  pointer-events: auto;
+}
+.lp-logo {
+  font-family: var(--display);
+  font-size: 26px;
+  letter-spacing: 0.02em;
+}
+.lp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid color-mix(in srgb, var(--role) 55%, transparent);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  color: var(--cotton);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.8s, box-shadow 0.3s;
+}
+.lp-pill:hover {
+  background: color-mix(in srgb, var(--role) 16%, transparent);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--role) 30%, transparent);
+}
+
+/* ---------- scrolling content ---------- */
+.lp-scroll {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  outline: none;
+  scroll-behavior: smooth;
+}
+.lp-scroll::-webkit-scrollbar {
+  display: none;
+}
+.lp:not(.ready) .lp-scroll {
+  overflow: hidden;
+}
+.lp-sec {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(var(--edge) * 2.6) var(--edge) calc(var(--edge) * 1.6);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.lp-eyebrow {
+  margin: 0 0 14px;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cotton-dim);
+}
+.lp-eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 10px;
+  border-radius: 50%;
+  vertical-align: 1px;
+  background: var(--role);
+  box-shadow: 0 0 10px var(--role);
+  transition: background 0.8s, box-shadow 0.8s;
+}
+.lp-h1,
+.lp-h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.005em;
+  line-height: 0.92;
+}
+.lp-h1 {
+  font-size: clamp(52px, 8.4vw, 150px);
+}
+.lp-h2 {
+  font-size: clamp(42px, 6vw, 104px);
+}
+.lp-h1 span,
+.lp-h2 span {
+  display: block;
+  color: var(--role);
+  transition: color 0.8s ease;
+}
+.lp-lead {
+  max-width: 46ch;
+  margin: 22px 0 0;
+  font-size: clamp(16px, 1.25vw, 19px);
+  line-height: 1.55;
+  color: #c9c9d1;
+}
+
+.lp-ctas {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-top: 32px;
+}
+.lp-btn {
+  padding: 15px 30px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cotton);
+  color: #000;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--role) 40%, transparent);
+  transition: transform 0.15s, box-shadow 0.3s;
+}
+.lp-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 40px 2px color-mix(in srgb, var(--role) 45%, transparent);
+}
+.lp-link {
+  color: var(--cotton);
+  font-size: 15px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--woad);
+  padding-bottom: 2px;
+}
+.lp-link:hover {
+  border-color: var(--role);
+}
+
+/* ---------- hero ---------- */
+.lp-hero-copy {
+  max-width: min(760px, 58vw);
+}
+.lp.ready .lp-hero-copy > * {
+  animation: lp-up 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.lp.ready .lp-hero-copy > :nth-child(2) {
+  animation-delay: 0.12s;
+}
+.lp.ready .lp-hero-copy > :nth-child(3) {
+  animation-delay: 0.24s;
+}
+.lp.ready .lp-hero-copy > :nth-child(4) {
+  animation-delay: 0.36s;
+}
+.lp:not(.ready) .lp-hero-copy > * {
+  opacity: 0;
+}
+/* the hero is a column: text centred in the free space, "Speaking as" at the bottom.
+   Both are in the normal flow, so on short screens they push apart instead of overlapping. */
+.lp-hero {
+  justify-content: flex-start;
+  padding-bottom: var(--edge);
+}
+.lp-hero-copy {
+  margin-block: auto;
+}
+.lp-hero-role {
+  display: grid;
+  justify-items: start;
+  margin-top: 40px;
+  min-height: 7.2em; /* room for the longest title, so the page doesn't jump as roles change */
+  align-content: end;
+}
+.lp-hero-role span {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cotton-dim);
+}
+.lp-hero-role b {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(40px, 4.6vw, 76px);
+  line-height: 1;
+  color: var(--role);
+  text-shadow: 0 0 40px color-mix(in srgb, var(--role) 35%, transparent);
+  animation: lp-up 0.5s ease both;
+}
+.lp-hero-role small {
+  font-size: 13px;
+  color: var(--cotton-dim);
+}
+.lp-scrollcue {
+  position: absolute;
+  right: var(--edge);
+  bottom: var(--edge);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--cotton-dim);
+  writing-mode: vertical-rl;
+  padding-bottom: 54px;
+}
+.lp-scrollcue::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 44px;
+  background: linear-gradient(var(--cotton-dim), transparent);
+  animation: lp-cue 1.8s ease-in-out infinite;
+}
+@keyframes lp-cue {
+  0% {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  50% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  51% {
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+/* ---------- statement ---------- */
+.lp-statement-inner {
+  margin-left: auto;
+  max-width: min(780px, 56vw);
+}
+.lp-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  margin-top: 40px;
+}
+.lp-cols h3,
+.lp-card h3 {
+  margin: 0 0 8px;
+  font-family: var(--font);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.lp-cols p,
+.lp-card p {
+  margin: 0;
+  color: #b4b4bd;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+/* ---------- team ---------- */
+.lp-team .lp-reveal {
+  max-width: min(820px, 62vw);
+}
+.lp-roles {
+  list-style: none;
+  margin: 36px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.lp-roles button {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--woad-soft);
+  border-radius: 14px;
+  background: rgba(14, 14, 17, 0.55);
+  backdrop-filter: blur(8px);
+  color: var(--cotton);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s, transform 0.2s;
+}
+.lp-roles b {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  color: var(--c);
+}
+.lp-roles span {
+  font-size: 13px;
+  color: var(--cotton-dim);
+}
+.lp-roles button:hover,
+.lp-roles button.on,
+.lp-roles button:focus-visible {
+  border-color: color-mix(in srgb, var(--c) 60%, transparent);
+  background: color-mix(in srgb, var(--c) 10%, rgba(14, 14, 17, 0.7));
+  transform: translateY(-2px);
+}
+.lp-note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--cotton-dim);
+}
+
+/* ---------- shape ---------- */
+.lp-shape {
+  justify-content: space-between;
+  text-align: center;
+  align-items: center;
+}
+.lp-shape .lp-lead {
+  margin: 0 auto 22px;
+}
+.lp-states {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 920px;
+}
+.lp-states button {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--woad-soft);
+  border-radius: 14px;
+  background: rgba(14, 14, 17, 0.55);
+  backdrop-filter: blur(8px);
+  color: var(--cotton);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s;
+}
+.lp-states b {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.lp-states span {
+  font-size: 13px;
+  color: var(--cotton-dim);
+  line-height: 1.45;
+}
+.lp-states button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--role) 60%, transparent);
+  background: color-mix(in srgb, var(--role) 10%, rgba(14, 14, 17, 0.7));
+}
+
+/* ---------- features ---------- */
+.lp-features .lp-reveal {
+  margin-left: auto;
+  max-width: min(980px, 70vw);
+}
+.lp-grid {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.lp-card {
+  padding: 22px;
+  border: 1px solid var(--woad-soft);
+  border-radius: 18px;
+  background: rgba(14, 14, 17, 0.6);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.3s, transform 0.3s;
+}
+.lp-card:hover {
+  border-color: color-mix(in srgb, var(--role) 45%, transparent);
+  transform: translateY(-3px);
+}
+.lp-num {
+  display: block;
+  margin-bottom: 26px;
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--role);
+  transition: color 0.8s;
+}
+.lp-reveal.in .lp-card {
+  animation: lp-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0ms) both;
+}
+
+/* ---------- close ---------- */
+.lp-close {
+  align-items: center;
+  text-align: center;
+}
+.lp-close-inner {
+  display: grid;
+  justify-items: center;
+  gap: 36px;
+}
+.lp-foot {
+  position: absolute;
+  left: var(--edge);
+  right: var(--edge);
+  bottom: var(--edge);
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--cotton-dim);
+}
+
+/* ---------- reveal on scroll ---------- */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.lp-reveal.in {
+  opacity: 1;
+  transform: none;
+}
+@keyframes lp-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+/* ---------- leaving for the app ---------- */
+.lp.leaving .lp-scroll,
+.lp.leaving .lp-nav {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.lp.leaving {
+  animation: lp-out 0.9s ease forwards;
+}
+@keyframes lp-out {
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- smaller screens ---------- */
+@media (max-width: 1000px) {
+  .lp-hero-copy,
+  .lp-statement-inner,
+  .lp-team .lp-reveal,
+  .lp-features .lp-reveal {
+    max-width: none;
+    margin-left: 0;
+  }
+  .lp-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .lp-states {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .lp-sec {
+    padding-top: 110px;
+  }
+  .lp-hero-copy {
+    margin-top: auto;
+    margin-bottom: 0;
+  }
+  .lp-hero-role {
+    margin-top: 28px;
+    min-height: 0;
+  }
+  .lp-cols,
+  .lp-grid {
+    grid-template-columns: 1fr;
+  }
+  .lp-roles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .lp-roles b {
+    font-size: 20px;
+  }
+  .lp-scrollcue {
+    display: none;
+  }
+  .lp-foot {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+  /* text sits over the globe on phones: give it a soft dark backing */
+  .lp-sec::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.2) 60%, transparent);
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+  .lp.ready .lp-hero-copy > *,
+  .lp-reveal.in .lp-card,
+  .lp-hero-role b,
+  .lp-scrollcue::after {
+    animation: none;
+  }
+  .lp-scroll {
+    scroll-behavior: auto;
+  }
+}
