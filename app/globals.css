@@ -1173,14 +1173,8 @@ a.btn {
   padding: 8px 12px 8px 14px;
   border-radius: var(--radius-sm);
   background: rgba(20, 20, 24, 0.6);
-  border-left: 3px solid var(--woad);
-}
-/* no red here: high = bright accent, medium = dimmed accent, low = plain line */
-.ov-issues li.lvl-high {
-  border-left-color: var(--turmeric);
-}
-.ov-issues li.lvl-med {
-  border-left-color: color-mix(in srgb, var(--turmeric) 50%, var(--woad));
+  /* plain grey line for every level: no colour here */
+  border-left: 3px solid rgba(255, 255, 255, 0.14);
 }
 .ov-from {
   display: block;
