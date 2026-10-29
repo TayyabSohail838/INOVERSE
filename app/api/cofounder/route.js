@@ -85,7 +85,10 @@ export const POST = route(async (req) => {
   contextP.catch(() => {}); // the simulation doesn't need it; errors surface where it's awaited
   const { skill } = detectSimIntent(msg)
     ? { skill: "market-sim" }
-    : parseRouterReply(await gemma(routerPrompt(msg), { temperature: 0, fast: true }));
+    : // picking the advisor is a nice-to-have: if it's slow or busy, the all-round cofounder answers
+      parseRouterReply(
+        await gemma(routerPrompt(msg), { temperature: 0, fast: true, timeoutMs: 10000, attempts: 1 }).catch(() => "")
+      );
 
   let reply;
   if (skill === "market-sim") {
@@ -101,7 +104,8 @@ export const POST = route(async (req) => {
     let out;
     try {
       out = await gemma(msg, { system, history: hist, json: true, fast: true });
-    } catch {
+    } catch (err) {
+      if (err.busy) throw err; // Google is overloaded: asking again would only run past the time limit
       // Model ignored the JSON format: speak the first sentence, show everything
       const t = await gemma(msg, { system, history: hist, fast: true });
       out = { say: t.split(/(?<=[.!?])\s/)[0], details: t };
