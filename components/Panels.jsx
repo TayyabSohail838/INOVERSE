@@ -390,7 +390,7 @@ export function WeeklyPanel({ dbReady, lang, onSpeak }) {
 }
 
 // ---------------- Company ----------------
-const STAGES = ["idea", "prototype", "pilot", "paying", "paused"];
+const STAGES = ["idea", "prototype", "pilot", "live", "paying", "paused"];
 
 export function CompanyPanel({ dbReady }) {
   const [data, setData] = useState(null);

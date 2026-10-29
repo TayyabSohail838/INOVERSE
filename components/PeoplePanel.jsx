@@ -19,7 +19,7 @@ const DAY = 864e5;
 const toInput = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${String(d.getFullYear()).padStart(4, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 const fromInput = (v) => (v ? new Date(`${v}T23:59:00`).toISOString() : null);
 const inDays = (n) => fromInput(toInput(new Date(Date.now() + n * DAY).toISOString()));
@@ -32,6 +32,26 @@ function followText(iso) {
   if (days === 0) return { text: "Follow up today", cls: "k-today" };
   if (days === 1) return { text: "Follow up tomorrow", cls: "" };
   return { text: `Follow up ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`, cls: "" };
+}
+
+// While you type the year, the browser reports partial years (0002, 0020, 0202…).
+// Keep what's typed here and save only once the year has 4 real digits (or it's cleared).
+function FollowupDate({ label, iso, onSave }) {
+  const saved = toInput(iso);
+  const [value, setValue] = useState(saved);
+  useEffect(() => setValue(saved), [saved]);
+  return (
+    <input
+      type="date"
+      aria-label={label}
+      value={value}
+      onChange={(e) => {
+        const v = e.target.value;
+        setValue(v);
+        if (v === "" ? saved !== "" : /^[1-9]\d{3}-/.test(v) && v !== saved) onSave(v);
+      }}
+    />
+  );
 }
 
 const EMPTY = { name: "", phone: "", org: "", role: "", stage: "lead", followup: "", notes: "" };
@@ -216,7 +236,7 @@ export default function PeoplePanel({ dbReady, lang }) {
                 </div>
                 <p className="muted">
                   {[c.role, c.org].filter(Boolean).join(" · ") || "No business added"}
-                  {c.phone ? ` · +${c.phone}` : " · no number"}
+                  {c.phone ? ` · +${c.phone}` : ""}
                   {c.source === "whatsapp" ? " · added on WhatsApp" : ""}
                 </p>
                 {c.notes && <p className="pre">{c.notes}</p>}
@@ -230,11 +250,10 @@ export default function PeoplePanel({ dbReady, lang }) {
                       <option key={v} value={v}>{l}</option>
                     ))}
                   </select>
-                  <input
-                    type="date"
-                    aria-label={`Follow-up date for ${c.name}`}
-                    value={toInput(c.next_followup_at)}
-                    onChange={(e) => patch(c.id, { next_followup_at: fromInput(e.target.value) })}
+                  <FollowupDate
+                    label={`Follow-up date for ${c.name}`}
+                    iso={c.next_followup_at}
+                    onSave={(v) => patch(c.id, { next_followup_at: fromInput(v) })}
                   />
                 </div>
                 )}

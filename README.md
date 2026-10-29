@@ -85,6 +85,16 @@ Inoverse checks for new Inovo emails when it opens and every 5 minutes. While th
 
 Open **People** in the dock. Add leads, clients and partners with their WhatsApp number, stage and follow-up date. Inovo knows who is due, **Draft message** writes a short WhatsApp message, and **Open in WhatsApp** opens the chat with it typed. Numbers starting with 0 get Pakistan's code (92); change it with `DEFAULT_COUNTRY_CODE`.
 
+### 6b. Market simulation (no setup)
+
+Open **Simulate** in the dock (Inovo switches to its CMO role). Modelled on the [MiroFish](https://github.com/666ghj/MiroFish) startup-simulation method, but runs on Gemma inside the app: no Python, Docker or Zep account needed.
+
+- **Compare products:** every product meets 8 simulated Pakistani customers. Score = 50% their demand + 30% how fast a small team can land the first paying customer + 20% product readiness. Inovo names the product to focus on, the fastest cash and one action for this week.
+- **Simulate one:** seed brief → 6 personas → round 1 (each reacts alone) → round 2 (they hear each other and may change their mind) → report: segments, objections, trust barriers, price, search words, skeptical/base/optimistic cases, 5 hypotheses to test with real people and a 48-hour test. Scenarios: Launch, Pricing, Message.
+- Or just ask: **"Which of our products is best?"**, **"Simulate Wattly"**, **"konsa product best hai?"**
+- The briefs live in `data/product-briefs.md` (prices there are assumptions; edit them). Evidence you log for a product is added automatically.
+- These are AI-made customers: use the result to pick what to test with real people, not as proof of demand.
+
 ### 7. Connect WhatsApp: text Inovo from your phone (optional, about 30 minutes)
 
 Text Inovo like a person: *"Meeting with Ahmed from Al-Noor clinic Monday 4pm, he wants a quote"* → Inovo replies, saves the meeting as a task and Ahmed in People. Voice notes work. Send **brief** for today's plan. Every morning at 8:00 (Pakistan time) Inovo sends you a brief.
@@ -128,6 +138,7 @@ This uses Meta's official WhatsApp Business Cloud API. It needs the **Vercel lin
 6. Say **"Open YouTube"** or **"WhatsApp kholo"** → a new tab opens. If Chrome blocks it, use the button in the chat or allow pop-ups for the site once.
 7. Switch to **اردو** and ask something → it listens in Urdu and answers in Roman Urdu.
 8. Reload the page → the conversation is still there.
+9. Open **Simulate** → **Find our best product** → a ranked list of the Inovix products with what simulated customers said. **Full simulation** runs the two-round version for one product.
 
 ---
 
@@ -191,6 +202,7 @@ All routes return JSON. When `ACCESS_CODE` is set, send it in the `x-access-code
 - Few computers have an Urdu voice, so Roman Urdu is read by an English voice.
 - The Investigator has no web search; it uses only the Evidence tab.
 - A gap check makes 8 Gemma calls and takes 15–40 seconds.
+- A product comparison makes about 7 Gemma calls and takes 30–60 seconds (longer on a slow connection; results are reused for 30 minutes). A full simulation of one product makes 4 calls. Each step is its own request, so it fits Vercel's 60-second limit.
 - Website commands open browser tabs only, not desktop apps or files.
 - One company per deployment for now (`COMPANY_SLUG`, default `inovix`).
 

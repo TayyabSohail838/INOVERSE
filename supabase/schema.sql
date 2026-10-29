@@ -25,7 +25,7 @@ create table if not exists products (
   company     text not null default 'inovix',
   name        text not null,
   description text not null default '',
-  stage       text not null default 'idea',          -- idea, prototype, pilot, paying, paused
+  stage       text not null default 'idea',          -- idea, prototype, pilot, live, paying, paused
   created_at  timestamptz not null default now()
 );
 

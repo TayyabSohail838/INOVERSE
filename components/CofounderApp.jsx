@@ -8,9 +8,10 @@ import { toWavBase64 } from "@/lib/wav";
 import VoiceCaption, { wordWeights } from "@/components/VoiceCaption";
 import TasksPanel from "@/components/TasksPanel";
 import PeoplePanel from "@/components/PeoplePanel";
+import SimulatePanel from "@/components/SimulatePanel";
 import ChatOverview from "@/components/ChatOverview";
-import Landing from "@/components/Landing";
-import HudScene from "@/components/HudScene";
+import Globe from "@/components/Globe";
+import { ROLES, roleByKey, roleForSkill, roleForPanel } from "@/lib/roles";
 
 
 const STATE_TEXT = {
@@ -37,7 +38,8 @@ export default function CofounderApp() {
   const [tab, setTab] = useState(null); // which dock panel is open (null = none)
   const [needCode, setNeedCode] = useState(false);
   const [codeInput, setCodeInput] = useState("");
-  const [entered, setEntered] = useState(false); // past the scroll-through intro?
+  const [roleKey, setRoleKey] = useState("cofounder"); // which hat Inovo is wearing (globe colour)
+  const [rolePicker, setRolePicker] = useState(false);
   const [chatView, setChatView] = useState("talk"); // Chat panel: conversation or overview
 
   const levelRef = useRef(0);
@@ -131,24 +133,38 @@ export default function CofounderApp() {
   async function startMeter() {
     if (meterRef.current) return null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Auto gain off: it turns the mic up whenever you go quiet, which makes room
+      // noise look like talking and recording never stops. Noise suppression stays on.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+      });
       const Ctx = window.AudioContext || window.webkitAudioContext;
       const ctx = new Ctx();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 512;
       ctx.createMediaStreamSource(stream).connect(analyser);
       const buf = new Uint8Array(analyser.fftSize);
-      const tick = () => {
+      let last = performance.now();
+      const tick = (now = performance.now()) => {
         analyser.getByteTimeDomainData(buf);
         let sum = 0;
         for (const v of buf) {
           const x = (v - 128) / 128;
           sum += x * x;
         }
-        levelRef.current = Math.sqrt(sum / buf.length);
-        if (meterRef.current) meterRef.current.raf = requestAnimationFrame(tick);
+        const rms = Math.sqrt(sum / buf.length);
+        levelRef.current = rms;
+        // Voice envelope for "have you stopped talking?": jumps up with each syllable and
+        // falls back over ~0.3 s, so the gaps between syllables don't look like silence.
+        const dt = Math.min(0.1, (now - last) / 1000);
+        last = now;
+        const m = meterRef.current;
+        if (m) {
+          m.env = rms > m.env ? rms : m.env * Math.exp(-dt / 0.3);
+          m.raf = requestAnimationFrame(tick);
+        }
       };
-      meterRef.current = { stream, ctx, raf: 0 };
+      meterRef.current = { stream, ctx, raf: 0, env: 0 };
       meterRef.current.raf = requestAnimationFrame(tick);
       return null;
     } catch (err) {
@@ -280,31 +296,30 @@ export default function CofounderApp() {
     setState("listening");
     setCaption({ who: "you", text: "" });
 
-    // Stop by itself: 1.2 s of quiet after you speak, 8 s if no speech is
-    // picked up at all, and never longer than 45 s.
+    // Stop by itself about 1.5 s after you stop talking (8 s if you say nothing, 45 s max).
+    // "Talking" is judged against YOUR voice level, not against silence, so a fan, AC or
+    // street noise can't keep it listening, and a normal pause between sentences
+    // (up to ~1 s) doesn't cut you off. Tested on speech + four noise levels.
     const started = Date.now();
     let spoke = false;
-    let lastLoud = started;
-    // Background noise level (fan, room hum), learned from every reading: it drops
-    // straight to any quieter reading and only creeps up slowly. Before, steady noise
-    // counted as "still talking" and recording went on long after you stopped.
-    let floor = null;
-    const recent = [];
+    let lastLoud = started; // last moment that still sounded like talking
+    let floor = null; // background noise: drops to any quieter reading, creeps up slowly
+    let peak = 0; // your speaking level
     session.timer = setInterval(() => {
       const now = Date.now();
-      recent.push(levelRef.current);
-      if (recent.length > 3) recent.shift();
-      const level = recent.reduce((a, b) => a + b, 0) / recent.length; // smooth out flicker
-      floor = floor === null ? level : level < floor ? level : floor + (level - floor) * 0.01;
-      const loud = level > Math.max(0.012, floor * 2 + 0.008);
-      if (loud) {
+      const env = meterRef.current?.env ?? levelRef.current;
+      floor = floor === null ? env : env < floor ? env : floor + (env - floor) * 0.01;
+      if (env > Math.max(0.02, floor * 3)) {
         spoke = true;
-        lastLoud = now;
+        peak = Math.max(peak * 0.995, env);
       }
+      const talking = env > Math.max(0.012, floor * 2) && (!spoke || env > peak * 0.25);
+      if (talking) lastLoud = now;
+
       if (!spoke && now - started > 8000) {
         if (auto) session.quiet = true;
         finishRecording();
-      } else if ((spoke && now - lastLoud > 1200) || now - started > 45000) {
+      } else if ((spoke && now - lastLoud > 1500) || now - started > 45000) {
         finishRecording();
       }
     }, 100);
@@ -606,9 +621,11 @@ export default function CofounderApp() {
         action = { ...data.action, blocked: !opened };
       }
 
+      const answeredAs = data.role || roleForSkill(data.skill);
+      if (answeredAs) setRoleKey(answeredAs);
       setLog((l) => [
         ...l,
-        { role: "assistant", text: data.details || data.say, skill: data.skill, gapCheck: data.gapCheck, experimentId: data.experimentId, action },
+        { role: "assistant", text: data.details || data.say, skill: data.skill, gapCheck: data.gapCheck, experimentId: data.experimentId, action, simulation: data.simulation ? true : undefined },
       ]);
       speak(
         action?.blocked
@@ -635,30 +652,122 @@ export default function CofounderApp() {
 
   const busy = state === "thinking";
   const panel = DOCK.find((d) => d.key === tab) || null;
+  const role = roleByKey(roleKey);
+  const recent = log.slice(-14);
+
+  function openPanel(key) {
+    setTab((t) => (t === key ? null : key));
+    const r = roleForPanel(key);
+    if (r) setRoleKey(r);
+  }
 
   return (
-    <div className={`app ${panel ? "has-panel" : ""}`}>
-      {!entered && <Landing onEnter={() => setEntered(true)} />}
-
+    <div
+      className={`app ${panel ? "has-panel" : ""}`}
+      style={{ "--role": role.color, "--role-2": role.color2 }}
+    >
       <section className={`stage s-${state}`} aria-label="Inovo">
-        {/* the HUD background: powers on after the intro, then loops with a slow drift */}
-        <HudScene entered={entered} state={state} levelRef={levelRef} />
-        <div className="stage-shade" aria-hidden="true" />
+        {/* the liquid globe in the middle: colour = role, moves with listening / talking */}
+        <Globe state={state} levelRef={levelRef} color={role.color} color2={role.color2} />
 
-        <header className="topbar">
-          <div className="brand">
-            <span className="brand-name">INOVERSE</span>
-            <span className="brand-sub">
-              with Inovo, your AI cofounder
-              {status?.demo && <span className="demo-badge" title="Public demo: sample Inovix data, nothing private">Demo</span>}
-            </span>
-          </div>
+        {/* top left: the name */}
+        <header className="brand">
+          <h1 className="brand-name">Inoverse</h1>
+          <p className="brand-sub">
+            Inovo, your AI cofounder
+            {status?.demo && <span className="demo-badge" title="Public demo: sample Inovix data, nothing private">Demo</span>}
+          </p>
           <div className="toggles" role="group" aria-label="Voice settings">
-            <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>English</button>
+            <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
             <button aria-pressed={lang === "ur"} onClick={() => setLang("ur")} lang="ur">اردو</button>
             <button aria-pressed={handsFree} onClick={() => setHandsFree((h) => !h)}>Hands-free</button>
           </div>
         </header>
+
+        {/* top right: the conversation, newest at the bottom, older lines fade out */}
+        <aside className="feed" aria-label="Conversation">
+          {recent.length === 0 ? (
+            <ul className="feed-list feed-try">
+              <li className="feed-head">Try asking</li>
+              {TRY.map((t) => (
+                <li key={t}>
+                  <button onClick={() => ask(t)} disabled={busy}>{t}</button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="feed-wrap">
+              <ul className="feed-list">
+                {recent.map((m, i) => {
+                  const you = m.role === "user";
+                  // the role that answered: for your message, the role that replied to it
+                  const reply = you ? recent.slice(i + 1).find((n) => n.role === "assistant") : m;
+                  const r = reply ? roleByKey(roleForSkill(reply.skill) || "cofounder") : busy ? role : null;
+                  const text = plainText(m.text || "").replace(/\s+/g, " ");
+                  return (
+                    <li key={log.length - recent.length + i} className={`feed-item ${m.role}`}>
+                      <span className="feed-by">
+                        {you ? "You" : "Inovo"}
+                        {r && (
+                          <span className="feed-tag" style={{ "--c": r.color }} title={`${you ? "Asked" : "Answered by"} ${r.label}: ${r.area}`}>
+                            {you ? `to ${r.label}` : r.label}
+                          </span>
+                        )}
+                      </span>
+                      <span className="feed-text">{text.length > 180 ? text.slice(0, 180) + "…" : text}</span>
+                    </li>
+                  );
+                })}
+                {busy && <li className="feed-item thinking-line"><span className="feed-text">Thinking…</span></li>}
+              </ul>
+              {/* blur that grows toward the top; the newest lines at the bottom stay sharp */}
+              <div className="feed-blur" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </div>
+            </div>
+          )}
+          {recent.length > 0 && (
+            <button className="feed-open" onClick={() => openPanel("chat")}>Open full chat →</button>
+          )}
+        </aside>
+
+        {/* bottom left: the role Inovo is speaking as */}
+        <div className="role">
+          <span className="role-tag">Speaking as</span>
+          <button
+            className={`role-name ${role.label.length > 6 ? "long" : ""}`}
+            onClick={() => setRolePicker((o) => !o)}
+            aria-expanded={rolePicker}
+            aria-haspopup="listbox"
+            title="Change role"
+          >
+            {role.label}
+          </button>
+          <span className="role-area">{role.area}</span>
+          {rolePicker && (
+            <ul className="role-picker" role="listbox" aria-label="Roles">
+              {ROLES.map((r) => (
+                <li key={r.key}>
+                  <button
+                    role="option"
+                    aria-selected={r.key === roleKey}
+                    style={{ "--c": r.color }}
+                    onClick={() => {
+                      setRoleKey(r.key);
+                      setRolePicker(false);
+                    }}
+                  >
+                    <i aria-hidden="true" />
+                    {r.label}
+                    <small>{r.area}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="stage-notices">
           {needCode && (
@@ -682,26 +791,30 @@ export default function CofounderApp() {
           )}
           <p className="state-line" aria-live="polite">{STATE_TEXT[state]}</p>
           {state === "idle" ? (
-            <button className="talk" onClick={() => listen()}>Talk</button>
+            <button className="talk" onClick={() => listen()}>
+              <MicIcon /> Talk
+            </button>
           ) : (
             <button className="talk stop" onClick={stop}>{state === "listening" ? "Done" : "Stop"}</button>
           )}
-
-          <nav className="dock" aria-label="Inoverse features">
-            {DOCK.map((d) => (
-              <button
-                key={d.key}
-                className={tab === d.key ? "on" : ""}
-                aria-pressed={tab === d.key}
-                onClick={() => setTab((t) => (t === d.key ? null : d.key))}
-              >
-                <DockIcon name={d.key} />
-                <span>{d.label}</span>
-                {d.key === "chat" && busy && <i className="dock-dot" aria-hidden="true" />}
-              </button>
-            ))}
-          </nav>
         </div>
+
+        {/* bottom right: every feature, each opens a slide-in panel */}
+        <nav className="dock" aria-label="Inoverse features">
+          {DOCK.map((d) => (
+            <button
+              key={d.key}
+              className={tab === d.key ? "on" : ""}
+              aria-pressed={tab === d.key}
+              onClick={() => openPanel(d.key)}
+              title={d.title}
+            >
+              <DockIcon name={d.key} />
+              <span>{d.label}</span>
+              {d.key === "chat" && busy && <i className="dock-dot" aria-hidden="true" />}
+            </button>
+          ))}
+        </nav>
       </section>
 
       {/* slide-in panel for the dock feature */}
@@ -738,9 +851,23 @@ export default function CofounderApp() {
                         )}
                         {log.map((m, i) => (
                           <article key={i} className={`msg ${m.role}`}>
-                            {m.role === "assistant" && m.skill && <span className="skill">{SKILL_NAMES[m.skill] || m.skill}</span>}
+                            {m.role === "assistant" && (() => {
+                              const r = roleByKey(roleForSkill(m.skill) || "cofounder");
+                              const name = SKILL_NAMES[m.skill];
+                              return (
+                                <span className="skill" style={{ "--c": r.color }}>
+                                  {r.label}
+                                  {name && name !== r.label ? ` · ${name}` : ""}
+                                </span>
+                              );
+                            })()}
                             {m.gapCheck && <GapCard gap={m.gapCheck} onOpenTests={() => setTab("tests")} />}
                             <div className="text">{m.role === "assistant" ? <Markdown text={m.text} /> : m.text}</div>
+                            {m.simulation && (
+                              <div className="action">
+                                <button className="link" onClick={() => setTab("simulate")}>Open the full simulation</button>
+                              </div>
+                            )}
                             {m.action && (
                               <div className="action">
                                 <a href={m.action.url} target="_blank" rel="noopener noreferrer">Open {m.action.label}</a>
@@ -769,6 +896,7 @@ export default function CofounderApp() {
               )}
               {tab === "tasks" && <TasksPanel dbReady={dbReady} />}
               {tab === "people" && <PeoplePanel dbReady={dbReady} lang={lang} />}
+              {tab === "simulate" && <SimulatePanel lang={lang} onSpeak={speak} />}
               {tab === "evidence" && <EvidencePanel dbReady={dbReady} />}
               {tab === "tests" && <TestsPanel dbReady={dbReady} />}
               {tab === "weekly" && <WeeklyPanel dbReady={dbReady} lang={lang} onSpeak={speak} />}
@@ -786,11 +914,29 @@ const DOCK = [
   { key: "chat", label: "Chat", title: "Chat with Inovo" },
   { key: "tasks", label: "Tasks", title: "Tasks & meetings" },
   { key: "people", label: "People", title: "People & outreach" },
+  { key: "simulate", label: "Simulate", title: "Market simulation" },
   { key: "evidence", label: "Evidence", title: "Evidence" },
   { key: "tests", label: "Tests", title: "48-hour tests" },
   { key: "weekly", label: "Weekly", title: "Weekly review" },
   { key: "company", label: "Company", title: "Company" },
 ];
+
+// Shown in the conversation list before you've said anything.
+const TRY = [
+  "A client wants a website for his textile shop. What's the scope?",
+  "How should we price Wattly?",
+  "What's on my plate this week?",
+  "Open YouTube",
+];
+
+function MicIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+    </svg>
+  );
+}
 
 function DockIcon({ name }) {
   const common = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true };
@@ -801,6 +947,8 @@ function DockIcon({ name }) {
       return (<svg {...common}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8 12 3 3 5-6" /></svg>);
     case "people":
       return (<svg {...common}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" /></svg>);
+    case "simulate":
+      return (<svg {...common}><circle cx="12" cy="5" r="2.2" /><circle cx="5" cy="17" r="2.2" /><circle cx="19" cy="17" r="2.2" /><circle cx="12" cy="13" r="1.6" /><path d="M12 7.2v4.2M10.7 13.9l-4 1.9M13.3 13.9l4 1.9M6.6 15.4l4-8.4M17.4 15.4l-4-8.4" /></svg>);
     case "evidence":
       return (<svg {...common}><path d="M6 3h9l3 3v15H6z" /><path d="M9 10h6M9 14h6M9 18h4" /></svg>);
     case "tests":
@@ -819,6 +967,19 @@ const SKILL_NAMES = {
   "weekly-review": "Weekly review",
   "client-scope": "Client scope",
   "open-website": "Website",
+  "market-sim": "Market simulation",
+  email: "Email",
+  // the C-suite skills: the role tag already says who it is
+  "ceo-advisor": "CEO",
+  "cto-advisor": "CTO",
+  "cfo-advisor": "CFO",
+  "cmo-advisor": "CMO",
+  "coo-advisor": "COO",
+  "chro-advisor": "HR",
+  "cpo-advisor": "CPO",
+  "cro-advisor": "CRO",
+  "ciso-advisor": "CISO",
+  "general-counsel": "Legal",
 };
 
 function SetupNotice({ status }) {

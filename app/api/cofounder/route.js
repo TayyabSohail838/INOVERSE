@@ -11,6 +11,37 @@ import { saveMessages, saveGapCheck, InputError } from "@/lib/store";
 import { route, readJson } from "@/lib/http";
 import { detectEmailIntent, emailBrief } from "@/lib/emailBrief";
 import { isDemo } from "@/lib/demo";
+import { simulateForChat, detectSimIntent } from "@/lib/simulate";
+import { roleForSkill, roleIntro } from "@/lib/roles";
+
+// Every answer says out loud which executive is speaking ("CFO here. ...") and carries
+// that role, so the screen can tag it and colour the globe.
+function announce(reply, lang) {
+  const role = roleForSkill(reply.skill) || "cofounder";
+  const intro = roleIntro(reply.skill, lang);
+  const say = reply.say && !reply.say.startsWith(intro) ? `${intro} ${reply.say}` : reply.say || intro;
+  return { ...reply, role, say };
+}
+
+// Sometimes the model puts its whole JSON reply inside "say" (or "details") as text.
+// Pull the real say/details back out so the voice never reads JSON aloud.
+function unwrap(out) {
+  for (let i = 0; i < 2; i++) {
+    const inner = [out?.say, out?.details].find((v) => typeof v === "string" && /^\s*\{[\s\S]*"say"\s*:/.test(v));
+    if (!inner) break;
+    try {
+      const parsed = JSON.parse(inner.slice(inner.indexOf("{"), inner.lastIndexOf("}") + 1));
+      out = { say: parsed.say || "", details: parsed.details || parsed.say || "" };
+    } catch {
+      // half-broken JSON: take the text of "say" by pattern
+      const m = inner.match(/"say"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if (!m) break;
+      const say = m[1].replace(/\\n/g, " ").replace(/\\"/g, '"');
+      out = { say, details: out.details && out.details !== inner ? out.details : say };
+    }
+  }
+  return out;
+}
 
 // The gap check makes 8 Gemma calls; give it time on Vercel.
 export const maxDuration = 60;
@@ -32,22 +63,32 @@ export const POST = route(async (req) => {
   const open = detectOpenIntent(msg);
   if (open) {
     const say = openReply(open, lang);
-    return Response.json({
-      skill: "open-website",
-      say,
-      details: `${say}\n${open.url}`,
-      action: { type: "open_url", url: open.url, label: open.label },
-    });
+    return Response.json(
+      announce(
+        {
+          skill: "open-website",
+          say,
+          details: `${say}\n${open.url}`,
+          action: { type: "open_url", url: open.url, label: open.label },
+        },
+        lang
+      )
+    );
   }
 
   // "Tell me about my latest email": read the inbox only when asked (sample emails on the public demo)
-  if (detectEmailIntent(msg)) return Response.json(await emailBrief({ lang }));
+  if (detectEmailIntent(msg)) return Response.json(announce({ skill: "email", ...(await emailBrief({ lang })) }, lang));
 
   const context = await buildContext();
-  const { skill } = parseRouterReply(await gemma(routerPrompt(msg), { temperature: 0, fast: true }));
+  const { skill } = detectSimIntent(msg)
+    ? { skill: "market-sim" }
+    : parseRouterReply(await gemma(routerPrompt(msg), { temperature: 0, fast: true }));
 
   let reply;
-  if (skill === "roast") {
+  if (skill === "market-sim") {
+    // MiroFish-style market simulation: one product, or every product ranked
+    reply = await simulateForChat({ message: msg, lang });
+  } else if (skill === "roast") {
     // The gap check before building anything; result + its 48-hour test are stored
     const result = await runGapCheck({ idea: msg, context, lang });
     const ids = await saveGapCheck(msg, result);
@@ -62,8 +103,11 @@ export const POST = route(async (req) => {
       const t = await gemma(msg, { system, history: hist, fast: true });
       out = { say: t.split(/(?<=[.!?])\s/)[0], details: t };
     }
+    out = unwrap(out);
     reply = { skill, say: out.say || "", details: out.details || out.say || "" };
   }
+
+  reply = announce(reply, lang);
 
   // Saving the chat must never cost the founder the answer. Demo visitors' chats aren't kept.
   if (!isDemo()) await saveMessages([
