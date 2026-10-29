@@ -1,8 +1,48 @@
 # Inoverse
 
-Inoverse is the app; Inovo is its voice AI cofounder for Inovix, who checks the gaps before you build. It runs on Gemma and stores everything in Supabase.
+**An AI partner you talk to, like Jarvis, with a whole C-suite inside.**
 
-At its centre is a 3D sphere woven from threads, in gold and indigo like cloth on a Faisalabad loom. The threads ripple with your voice, tighten while it thinks, and pulse while it speaks. Five reviewers orbit it. After a gap check, each reviewer moves closer the higher it scored, and the weave turns the colour of the verdict.
+**Live demo:** https://inoverse-ai.vercel.app (public demo with sample data)
+
+Inoverse is the app; **Inovo** is the AI partner that lives in it. You don't fill in forms or write prompts. You press **Talk** and speak to it like a cofounder across the table, in English or Roman Urdu. It listens, thinks, answers out loud and keeps the conversation going. Ask a follow-up, interrupt it, or switch on **Hands-free** and just keep talking.
+
+Behind that one voice is a full executive team: **CEO, CTO, CFO, CMO, COO, HR, CPO, CRO, CISO, Legal, Chief of Staff and Investor**. Each answer comes from the right one ("CFO here…"), and the 3D liquid globe at the centre of the screen takes that executive's colour. It ripples while you talk, moves while it thinks, and pulses while it speaks.
+
+## The problem
+
+Small startups in Pakistan are two or three part-time founders doing every job at once. Nobody checks the pricing, the security, the contract or the marketing plan. Teams build things nobody pays for, quote clients badly and forget follow-ups. Mentors and advisors are expensive and rarely available, and general chatbots don't know your company and agree with whatever you say.
+
+## The solution
+
+Inoverse gives a tiny team a leadership team that knows its context and is always one sentence away.
+
+- **Talk, and the right executive answers.** "How should we price Wattly?" goes to the CFO, "How do we protect patient data?" to the CISO, and "A client wants a website, what's the scope?" to the CTO, who gives a PKR quote.
+- **A partner that knows you.** Inovo reads your company, team, products, tasks, meetings, leads and evidence before every answer, so it advises on *your* situation, not in general.
+- **A partner that does errands too.** "Open YouTube", "what's in my latest email", "what's on my plate this week": the Chief of Staff handles it.
+- **Keeps track of your meetings, events and calls.** Inovo reads your Google Calendar for the week ahead, turns emails like "Inovo: pitch at NIC on Friday 3pm" into tasks, and saves "Meeting with Ahmed Monday 4pm" from a WhatsApp text. It plans your day around them, helps you prepare, reminds you who to follow up with after a call, and sends a morning brief of what's coming up.
+- **Gap check before you build.** Five reviewers (Critic, Champion, Analyst, Investigator, Customer) review a new idea in parallel. A verdict is calculated from their scores, and you get the cheapest 48-hour real-world test to prove or kill the idea.
+- **Market simulation.** Simulated Pakistani customers react to your products, hear each other over two rounds and may change their minds. Inovo ranks your products and names the one to focus on.
+- **Runs the company with you.** Tasks and meetings from Gmail and Google Calendar, a People panel for leads with WhatsApp drafts, a weekly review with owners and next actions, and an evidence log.
+- **On your phone.** Text or voice-note Inovo on WhatsApp. It saves meetings as tasks and leads as contacts, and sends a morning brief at 8:00.
+
+## Tech stack
+
+- **Frontend:** Next.js 15, React 19, Three.js (liquid globe, voice-reactive)
+- **AI:** Gemma 4 (31B and 26B A4B) as the brain; Gemini for audio (speech-to-text, text-to-speech, Gemini Live)
+- **Data:** Supabase (Postgres with Row Level Security; the secret key stays on the server)
+- **Integrations:** Gmail and Google Calendar (OAuth), WhatsApp Business Cloud API
+- **Hosting:** Vercel, with a public demo mode that shows sample data so visitors never see private data
+
+## How Inoverse uses Gemma
+
+1. **Gemma routes across 16 skills.** Gemma first sees only short skill descriptions and picks the right executive; then that skill's full instructions are loaded from `skills/*.md`. Prompts stay small and fast, and adding a department is adding one markdown file. (The C-suite skills are adapted from [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills), MIT.)
+2. **Multi-agent debate.** The gap check runs five Gemma agents in parallel with opposite personalities. The final verdict is calculated in code from their scores, not decided by the model, so it is consistent and can't be talked into a yes.
+3. **Grounded, not made up.** The Investigator may only use evidence the founder logged; with thin evidence it must score 5 or lower. Every answer is grounded in the company's real context.
+4. **Simulated customers on Gemma.** Modelled on [MiroFish](https://github.com/666ghj/MiroFish), but running entirely on Gemma inside the app: no Python, Docker or extra services.
+5. **The right Gemma for each job.** Gemma 4 31B handles deep reasoning (gap check, weekly review, simulation). Gemma 4 26B A4B, a mixture-of-experts model, runs live conversation with minimal thinking so spoken replies come back in seconds.
+6. **Gemma stays the brain in real-time voice.** Gemini Live handles the fast back-and-forth speech. When you ask for a quote, a simulation, your emails or a gap check, it calls the `inovo_brain` tool, which runs the Gemma route and shows the full answer on screen.
+7. **Built for a public link.** If Gemma is busy or out of quota, Inovo moves through backup models with their own free quotas (`gemini-3.5-flash-lite`, then `gemini-2.5-flash-lite`), so several people can talk to it at once without timeouts.
+8. **Made for Pakistan.** Roman Urdu voice, prices in PKR, WhatsApp first, and real local customers: clinics, textile mills, schools.
 
 ---
 
