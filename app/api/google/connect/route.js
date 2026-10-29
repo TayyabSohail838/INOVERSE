@@ -2,9 +2,12 @@
 // This is a normal page visit (not a fetch), so the access code comes as ?access=.
 import { randomBytes } from "node:crypto";
 import { authUrl, googleConfigured } from "@/lib/google";
+import { isDemo } from "@/lib/demo";
 
 export async function GET(req) {
   const url = new URL(req.url);
+  // the public demo never connects a real inbox
+  if (isDemo()) return Response.redirect(new URL("/?gmail=demo", url), 302);
   const code = process.env.ACCESS_CODE;
   if (code && url.searchParams.get("access") !== code) {
     return new Response("Access code required.", { status: 401 });

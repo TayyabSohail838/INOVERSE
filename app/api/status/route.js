@@ -1,9 +1,11 @@
 // GET /api/status → what is configured, for the setup screen. Never returns secrets.
 import { db, dbEnabled, COMPANY } from "@/lib/db";
+import { isDemo } from "@/lib/demo";
 
 export async function GET() {
   const status = {
     accessCodeRequired: Boolean(process.env.ACCESS_CODE),
+    demo: isDemo(), // public link: sample data instead of the founder's real tasks, people and email
     gemma: {
       configured: Boolean(process.env.GEMINI_API_KEY),
       model: process.env.GEMMA_MODEL || "gemma-4-31b-it",

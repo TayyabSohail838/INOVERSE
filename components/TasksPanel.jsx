@@ -1,5 +1,6 @@
 "use client";
-// Tasks tab: your upcoming tasks (Inovo reads them before every answer) and the Gmail connection.
+// Tasks panel: your upcoming tasks and meetings (Inovo reads them before every answer),
+// plus the Google (Gmail + Calendar) and WhatsApp connections.
 import { useCallback, useEffect, useState } from "react";
 import { api, getAccessCode } from "@/lib/api";
 
@@ -16,9 +17,22 @@ const dueText = (iso) => {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + (showTime ? `, ${time}` : "");
 };
 
+const meetingWhen = (m) => {
+  if (!m.start) return "";
+  if (m.allDay) return new Date(`${m.start}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const d = new Date(m.start);
+  const today = new Date();
+  const same = d.toDateString() === today.toDateString();
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return same ? `Today ${time}` : `${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })} ${time}`;
+};
+
 export default function TasksPanel({ dbReady }) {
   const [tasks, setTasks] = useState([]);
   const [gmail, setGmail] = useState(null);
+  const [cal, setCal] = useState(null); // { granted, meetings, error }
+  const [wa, setWa] = useState(null); // WhatsApp bot status
+  const [demo, setDemo] = useState(false); // public link: sample data, read-only
   const [form, setForm] = useState({ title: "", due: "", notes: "" });
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -26,9 +40,17 @@ export default function TasksPanel({ dbReady }) {
 
   const load = useCallback(async () => {
     try {
-      const [t, g] = await Promise.all([api("/api/tasks"), api("/api/google")]);
+      const [t, g, m, w] = await Promise.all([
+        api("/api/tasks"),
+        api("/api/google"),
+        api("/api/meetings").catch((e) => ({ error: e.message, meetings: [] })),
+        api("/api/whatsapp/status").catch(() => null),
+      ]);
       setTasks(t.tasks || []);
+      setDemo(Boolean(t.demo));
       setGmail(g);
+      setCal(m);
+      setWa(w);
       setError("");
     } catch (e) {
       setError(e.message);
@@ -103,6 +125,19 @@ export default function TasksPanel({ dbReady }) {
     }
   }
 
+  async function sendBrief() {
+    setBusy(true);
+    setNote("");
+    try {
+      const r = await api("/api/whatsapp/brief", { method: "POST" });
+      setNote(r.sent ? "Sent today's brief to your WhatsApp." : r.reason);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function disconnect() {
     try {
       await api("/api/google", { method: "DELETE" });
@@ -120,8 +155,44 @@ export default function TasksPanel({ dbReady }) {
     <div className="stack">
       <p className="lead">Inovo reads these before every answer, so it knows what's coming up for you.</p>
 
+      {cal?.granted && (
+        <div className="card">
+          <p className="item-title">Meetings this week</p>
+          {cal.error ? (
+            <p className="error">{cal.error}</p>
+          ) : cal.meetings.length === 0 ? (
+            <p className="muted">No meetings in the next 7 days.</p>
+          ) : (
+            <ul className="meetings">
+              {cal.meetings.map((m, i) => (
+                <li key={i}>
+                  <span className="kind">{meetingWhen(m)}</span>
+                  <span>
+                    {m.title}
+                    {m.people.length > 0 && <span className="muted"> · with {m.people.slice(0, 3).join(", ")}</span>}
+                  </span>
+                  {m.link && <a className="link" href={m.link} target="_blank" rel="noopener noreferrer">Join</a>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {demo && (
+        <div className="card demo-note">
+          <p className="item-title">Demo data</p>
+          <p className="muted">
+            This public link shows sample Inovix tasks, meetings and people, so nothing private is shared. On the founder's
+            laptop the same panels show real Gmail, Calendar and contacts. Try asking Inovo “What's on my plate today?” or
+            “Tell me about my latest email”.
+          </p>
+        </div>
+      )}
+
+      {!demo && (
       <div className="card">
-        <p className="item-title">Tasks from Gmail</p>
+        <p className="item-title">Google: Gmail + Calendar</p>
         {!gmail ? (
           <p className="muted">Checking…</p>
         ) : !gmail.configured ? (
@@ -145,15 +216,46 @@ export default function TasksPanel({ dbReady }) {
             <p className="muted">
               Email yourself with a subject like <b>Inovo: pitch at NIC on Friday 3pm</b>.
             </p>
+            {!gmail.calendar && (
+              <p className="warn">
+                Calendar isn't connected yet. <a href={connectHref}>Connect Google again</a> and allow calendar access so
+                Inovo sees your meetings.
+              </p>
+            )}
             <div className="row">
               <button className="btn" onClick={checkNow} disabled={busy}>{busy ? "Checking…" : "Check email now"}</button>
               <button className="link danger" onClick={disconnect}>Disconnect</button>
             </div>
           </>
         )}
-        {note && <p className="muted">{note}</p>}
       </div>
 
+      )}
+
+      {!demo && (
+      <div className="card">
+        <p className="item-title">WhatsApp</p>
+        {!wa ? (
+          <p className="muted">Checking…</p>
+        ) : !wa.configured ? (
+          <p className="muted">
+            Text Inovo from your phone and get a morning brief. Set it up with “Connect WhatsApp” in the README (needs the
+            Vercel link).
+          </p>
+        ) : (
+          <>
+            <p className="muted">
+              Inovo answers WhatsApp messages from <b>{wa.owner || "your number"}</b>. Text it things like “Meeting with
+              Ahmed from Al-Noor clinic Monday 4pm” and it saves them. Send “brief” for today's plan.
+            </p>
+            <button className="btn" onClick={sendBrief} disabled={busy}>Send me today's brief</button>
+          </>
+        )}
+      </div>
+      )}
+      {note && <p className="muted">{note}</p>}
+
+      {!demo && (
       <form className="card form" onSubmit={add}>
         <label>
           Task
@@ -171,6 +273,7 @@ export default function TasksPanel({ dbReady }) {
         </label>
         <button className="btn" disabled={busy || !form.title.trim()}>Add task</button>
       </form>
+      )}
 
       {error && <p className="error" role="alert">{error}</p>}
 
@@ -186,10 +289,12 @@ export default function TasksPanel({ dbReady }) {
               </div>
               <p className="item-title">{t.title}</p>
               {t.notes && <p className="pre">{t.notes}</p>}
-              <div className="row">
-                <button className="link" onClick={() => setDone(t)}>Mark done</button>
-                <button className="link danger" onClick={() => remove(t)}>Delete</button>
-              </div>
+              {!demo && (
+                <div className="row">
+                  <button className="link" onClick={() => setDone(t)}>Mark done</button>
+                  <button className="link danger" onClick={() => remove(t)}>Delete</button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

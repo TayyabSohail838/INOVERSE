@@ -2,6 +2,7 @@
 // Saves the long-lived sign-in so Inovo can keep checking your "Inovo" emails.
 import { exchangeCode, PROVIDER } from "@/lib/google";
 import { saveIntegration } from "@/lib/tasks";
+import { isDemo } from "@/lib/demo";
 
 const back = (url, params) => {
   const to = new URL("/", url);
@@ -14,6 +15,7 @@ const back = (url, params) => {
 
 export async function GET(req) {
   const url = new URL(req.url);
+  if (isDemo()) return back(url, { gmail: "demo" });
   const cookie = req.headers.get("cookie") || "";
   const expected = cookie.match(/(?:^|;\s*)g_oauth_state=([a-f0-9]+)/)?.[1];
 
@@ -22,9 +24,9 @@ export async function GET(req) {
     return back(url, { gmail: "error", reason: "The sign-in link expired. Try Connect Gmail again." });
   }
   try {
-    const { refresh_token, account } = await exchangeCode(url.searchParams.get("code"), url.origin);
+    const { refresh_token, account, scopes } = await exchangeCode(url.searchParams.get("code"), url.origin);
     if (!refresh_token) throw new Error("Google didn't give long-term access. Remove Inoverse at myaccount.google.com/permissions and connect again.");
-    await saveIntegration(PROVIDER, { account, refresh_token });
+    await saveIntegration(PROVIDER, { account, refresh_token, scopes });
     return back(url, { gmail: "connected" });
   } catch (err) {
     return back(url, { gmail: "error", reason: err.message.slice(0, 200) });

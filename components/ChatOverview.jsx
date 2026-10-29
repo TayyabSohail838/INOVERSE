@@ -41,15 +41,17 @@ export default function ChatOverview({ open, onClose, log, dbReady, inline = fal
     setLoading(true);
     // each part loads on its own, so one failure doesn't blank the rest
     const get = (p) => api(p).catch((e) => ({ error: e.message }));
-    const [tasks, commitments, weekly, company, experiments, evidence] = await Promise.all([
+    const [tasks, commitments, weekly, company, experiments, evidence, meetings, people] = await Promise.all([
       get("/api/tasks"),
       get("/api/commitments"),
       get("/api/weekly-review"),
       get("/api/company"),
       get("/api/experiments"),
       get("/api/evidence"),
+      get("/api/meetings"),
+      get("/api/people"),
     ]);
-    setData({ tasks, commitments, weekly, company, experiments, evidence });
+    setData({ tasks, commitments, weekly, company, experiments, evidence, meetings, people });
     setLoading(false);
   }, []);
 
@@ -74,9 +76,17 @@ export default function ChatOverview({ open, onClose, log, dbReady, inline = fal
   const experiments = data?.experiments?.experiments || [];
   const gapChecks = data?.experiments?.gapChecks || [];
   const evidenceCount = (data?.evidence?.evidence || []).length;
+  const meetings = data?.meetings?.granted ? data.meetings.meetings || [] : [];
+  const contacts = data?.people?.contacts || [];
+  const followUps = contacts.filter((c) => c.next_followup_at && Date.parse(c.next_followup_at) < Date.now() + 2 * DAY);
 
   // ---------- issues the skills and the app's checks have found ----------
   const issues = [];
+  for (const c of contacts) {
+    if (c.next_followup_at && Date.parse(c.next_followup_at) < Date.now() - DAY / 2) {
+      issues.push({ level: "high", from: "People", text: `Follow-up overdue: ${c.name}${c.org ? ` (${c.org})` : ""}, was due ${dueText(c.next_followup_at)}` });
+    }
+  }
   for (const t of tasks) {
     if (t.due_at && Date.parse(t.due_at) < Date.now()) issues.push({ level: "high", from: "Tasks", text: `Overdue: ${t.title} (was due ${dueText(t.due_at)})` });
   }
@@ -143,6 +153,34 @@ export default function ChatOverview({ open, onClose, log, dbReady, inline = fal
           {/* ---------- Upcoming work ---------- */}
           <section id="ov-work" className="ov-sec">
             <h3>Upcoming work</h3>
+            {meetings.length > 0 && (
+              <>
+                <h4>Meetings (next 7 days)</h4>
+                <ul className="ov-list">
+                  {meetings.map((m, i) => (
+                    <li key={i}>
+                      <span className="ov-tag">{dueText(m.allDay ? `${m.start}T12:00:00` : m.start)}</span>
+                      {m.title}
+                      {m.people.length > 0 && <span className="muted"> · with {m.people.slice(0, 3).join(", ")}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {followUps.length > 0 && (
+              <>
+                <h4>People to follow up with</h4>
+                <ul className="ov-list">
+                  {followUps.map((c) => (
+                    <li key={c.id}>
+                      <span className={`ov-tag ${Date.parse(c.next_followup_at) < Date.now() ? "bad" : ""}`}>{dueText(c.next_followup_at)}</span>
+                      <b>{c.name}</b>
+                      {c.org && <span className="muted"> · {c.org}</span>} <span className="muted">· {c.stage}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             <h4>Your tasks</h4>
             {data?.tasks?.error ? (
               <p className="error">{data.tasks.error}</p>
@@ -266,6 +304,8 @@ export default function ChatOverview({ open, onClose, log, dbReady, inline = fal
                   <div><b>{(company.products || []).length}</b><span>products</span></div>
                   <div><b>{tasks.length}</b><span>open tasks</span></div>
                   <div><b>{evidenceCount}</b><span>evidence notes</span></div>
+                  <div><b>{contacts.length}</b><span>people</span></div>
+                  <div><b>{contacts.filter((c) => c.stage === "client").length}</b><span>clients</span></div>
                   <div><b>{gapChecks.length}</b><span>gap checks</span></div>
                   <div><b>{experiments.filter((e) => e.status === "passed").length}/{experiments.length}</b><span>tests passed</span></div>
                 </div>

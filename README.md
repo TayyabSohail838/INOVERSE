@@ -58,28 +58,59 @@ Open **http://localhost:3000** and allow the microphone. If something is missing
 
 Open the **Company** tab and add your teammate (name and role). The cofounder assigns tasks only to people listed there.
 
-### 4. Connect Gmail for tasks (optional, about 15 minutes)
+### 4. Tables for tasks, people and WhatsApp (1 minute)
 
-Inovo can read your upcoming tasks from email. It reads **only** emails whose subject starts with **Inovo**, for example `Inovo: pitch at NIC on Friday 3pm`. Gemma turns each one into a task with a due date, and Inovo reads your upcoming tasks before every answer.
+In Supabase → **SQL Editor** → **New query**, paste all of `supabase/people.sql` and click **Run**. It creates the tables for tasks, the People panel, the Google connection and the WhatsApp bot. (New installs get them from `schema.sql` already.)
 
-1. In Supabase → **SQL Editor** → **New query**, paste all of `supabase/tasks.sql` and click **Run**. (New installs get these tables from `schema.sql` already.)
-2. Go to **https://console.cloud.google.com** → create a project called **Inoverse**.
-3. **APIs & Services** → **Library** → search **Gmail API** → **Enable**.
-4. **Google Auth Platform** (or **OAuth consent screen**) → **Get started**: app name **Inoverse**, your email as support email, audience **External**. Under **Audience** → **Test users**, add your Gmail address.
-5. **Clients** (or **Credentials** → **Create credentials** → **OAuth client ID**) → type **Web application**. Under **Authorized redirect URIs** add `http://localhost:3000/api/google/callback` (and `https://<your-domain>/api/google/callback` if you deploy).
-6. Copy the **Client ID** and **Client secret** into `.env.local`:
+### 5. Connect Google: Gmail + Calendar (optional, about 15 minutes)
+
+- **Gmail:** Inovo reads **only** emails whose subject starts with **Inovo**, for example `Inovo: pitch at NIC on Friday 3pm`, and turns them into tasks.
+- **Calendar:** Inovo reads your meetings for the next 7 days (read-only), plans around them and helps you prepare.
+
+1. Go to **https://console.cloud.google.com** → create a project called **INOVERSE**.
+2. **APIs & Services** → **Library** → enable **Gmail API** and **Google Calendar API**.
+3. **Google Auth Platform** (or **OAuth consent screen**) → **Get started**: app name **INOVERSE**, your email as support email, audience **External**. Under **Audience** → **Test users**, add your Gmail address.
+4. **Clients** (or **Credentials** → **Create credentials** → **OAuth client ID**) → type **Web application**. Under **Authorized redirect URIs** add `http://localhost:3000/api/google/callback` and `https://<your-vercel-domain>/api/google/callback`.
+5. Copy the **Client ID** and **Client secret** into `.env.local` (and Vercel):
    ```
    GOOGLE_CLIENT_ID=...
    GOOGLE_CLIENT_SECRET=...
    ```
    Restart `npm run dev`.
-7. Open the **Tasks** tab → **Connect Gmail** → sign in. Google will warn that the app isn't verified; click **Continue**. It's your own app.
+6. Open the **Tasks** panel → **Connect Gmail** → sign in and tick **both** Gmail and Calendar. Google warns that the app isn't verified; click **Continue**. It's your own app.
 
-Inoverse checks for new Inovo emails when it opens and every 5 minutes while it stays open. You can also add tasks by hand in the Tasks tab.
+Inoverse checks for new Inovo emails when it opens and every 5 minutes. While the Google app is in **Testing** mode, Google ends the sign-in after 7 days; the Tasks panel then asks you to connect again.
 
-While the Google app is in **Testing** mode, Google ends the sign-in after 7 days. When that happens the Tasks tab asks you to connect again.
+### 6. People & outreach (no setup)
 
-### 5. Deploy (optional)
+Open **People** in the dock. Add leads, clients and partners with their WhatsApp number, stage and follow-up date. Inovo knows who is due, **Draft message** writes a short WhatsApp message, and **Open in WhatsApp** opens the chat with it typed. Numbers starting with 0 get Pakistan's code (92); change it with `DEFAULT_COUNTRY_CODE`.
+
+### 7. Connect WhatsApp: text Inovo from your phone (optional, about 30 minutes)
+
+Text Inovo like a person: *"Meeting with Ahmed from Al-Noor clinic Monday 4pm, he wants a quote"* → Inovo replies, saves the meeting as a task and Ahmed in People. Voice notes work. Send **brief** for today's plan. Every morning at 8:00 (Pakistan time) Inovo sends you a brief.
+
+This uses Meta's official WhatsApp Business Cloud API. It needs the **Vercel link** (Meta must reach a public address) and a phone number that isn't already on WhatsApp (Meta gives you a free test number to start).
+
+1. Go to **https://developers.facebook.com** → **My Apps** → **Create app** → type **Business** → name it **INOVERSE** → add the **WhatsApp** product.
+2. **WhatsApp → API Setup**: note the **Phone number ID**. Under **To**, add **your own** WhatsApp number and confirm the code.
+3. Make a permanent token: **business.facebook.com → Settings → System users** → add a system user (Admin) → **Add assets** → your app (full control) → **Generate token** with `whatsapp_business_messaging` and `whatsapp_business_management`.
+4. **App settings → Basic**: copy the **App secret**.
+5. In Vercel → **Environment Variables** add:
+   ```
+   WHATSAPP_TOKEN=the system user token
+   WHATSAPP_PHONE_NUMBER_ID=from API Setup
+   WHATSAPP_APP_SECRET=from App settings → Basic
+   WHATSAPP_VERIFY_TOKEN=any password you make up
+   WHATSAPP_OWNER_NUMBER=923001234567   (your number; only it can talk to Inovo; comma-separate to add teammates)
+   CRON_SECRET=another long random password (for the morning brief)
+   ```
+   Redeploy.
+6. **WhatsApp → Configuration → Webhook → Edit**: callback URL `https://<your-vercel-domain>/api/whatsapp`, verify token = your `WHATSAPP_VERIFY_TOKEN` → **Verify and save**. Then **Manage** → subscribe to **messages**.
+7. Text the test number from your phone: "hi Inovo".
+
+**The morning brief and WhatsApp's 24-hour rule:** WhatsApp lets Inovo send you normal messages only within 24 hours of your last message to it. Text it once a day and the brief always arrives. To get it even when you haven't, create a template in **WhatsApp Manager → Message templates** (category **Utility**, body `{{1}}`), wait for approval, and set `WHATSAPP_BRIEF_TEMPLATE=<template name>` (and `WHATSAPP_BRIEF_TEMPLATE_LANG` if it isn't `en`).
+
+### 8. Deploy (optional)
 
 1. Push the project to GitHub and import it in **Vercel**.
 2. In Vercel → **Settings** → **Environment Variables**, add `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.

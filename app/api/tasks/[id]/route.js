@@ -2,13 +2,16 @@
 // DELETE /api/tasks/:id
 import { updateTask, removeTask } from "@/lib/tasks";
 import { route, readJson, idFrom } from "@/lib/http";
+import { demoReadOnly } from "@/lib/demo";
 
 export const PATCH = route(async (req, ctx) => {
+  demoReadOnly();
   const id = await idFrom(ctx);
   return Response.json({ task: await updateTask(id, await readJson(req)) });
 });
 
 export const DELETE = route(async (req, ctx) => {
+  demoReadOnly();
   await removeTask(await idFrom(ctx));
   return Response.json({ ok: true });
 });

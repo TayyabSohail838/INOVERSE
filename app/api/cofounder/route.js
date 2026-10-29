@@ -9,6 +9,8 @@ import { detectOpenIntent, openReply } from "@/lib/openIntent";
 import { buildContext } from "@/lib/context";
 import { saveMessages, saveGapCheck, InputError } from "@/lib/store";
 import { route, readJson } from "@/lib/http";
+import { detectEmailIntent, emailBrief } from "@/lib/emailBrief";
+import { isDemo } from "@/lib/demo";
 
 // The gap check makes 8 Gemma calls; give it time on Vercel.
 export const maxDuration = 60;
@@ -38,6 +40,9 @@ export const POST = route(async (req) => {
     });
   }
 
+  // "Tell me about my latest email": read the inbox only when asked (sample emails on the public demo)
+  if (detectEmailIntent(msg)) return Response.json(await emailBrief({ lang }));
+
   const context = await buildContext();
   const { skill } = parseRouterReply(await gemma(routerPrompt(msg), { temperature: 0, fast: true }));
 
@@ -60,8 +65,8 @@ export const POST = route(async (req) => {
     reply = { skill, say: out.say || "", details: out.details || out.say || "" };
   }
 
-  // Saving the chat must never cost the founder the answer.
-  await saveMessages([
+  // Saving the chat must never cost the founder the answer. Demo visitors' chats aren't kept.
+  if (!isDemo()) await saveMessages([
     { role: "user", text: msg },
     { role: "assistant", text: reply.details || reply.say, skill },
   ]).catch((err) => console.warn("Couldn't save the conversation:", err.message));

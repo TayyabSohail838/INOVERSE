@@ -7,6 +7,7 @@ import Markdown, { plainText } from "@/components/Markdown";
 import { toWavBase64 } from "@/lib/wav";
 import VoiceCaption, { wordWeights } from "@/components/VoiceCaption";
 import TasksPanel from "@/components/TasksPanel";
+import PeoplePanel from "@/components/PeoplePanel";
 import ChatOverview from "@/components/ChatOverview";
 import Landing from "@/components/Landing";
 import HudScene from "@/components/HudScene";
@@ -104,6 +105,7 @@ export default function CofounderApp() {
     if (!g) return;
     setTab("tasks");
     if (g === "error") setError(`Couldn't connect Gmail: ${p.get("reason") || "unknown problem"}`);
+    if (g === "demo") setError("This is the public demo, so it doesn't connect a real Gmail. Run INOVERSE on your laptop for that.");
     if (g === "not-configured") setError("Gmail isn't set up yet. See “Connect Gmail” in the README.");
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
@@ -646,7 +648,10 @@ export default function CofounderApp() {
         <header className="topbar">
           <div className="brand">
             <span className="brand-name">INOVERSE</span>
-            <span className="brand-sub">with Inovo, your AI cofounder</span>
+            <span className="brand-sub">
+              with Inovo, your AI cofounder
+              {status?.demo && <span className="demo-badge" title="Public demo: sample Inovix data, nothing private">Demo</span>}
+            </span>
           </div>
           <div className="toggles" role="group" aria-label="Voice settings">
             <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>English</button>
@@ -763,6 +768,7 @@ export default function CofounderApp() {
                 </div>
               )}
               {tab === "tasks" && <TasksPanel dbReady={dbReady} />}
+              {tab === "people" && <PeoplePanel dbReady={dbReady} lang={lang} />}
               {tab === "evidence" && <EvidencePanel dbReady={dbReady} />}
               {tab === "tests" && <TestsPanel dbReady={dbReady} />}
               {tab === "weekly" && <WeeklyPanel dbReady={dbReady} lang={lang} onSpeak={speak} />}
@@ -778,7 +784,8 @@ export default function CofounderApp() {
 // The dock: one icon per feature, each opens a slide-in panel.
 const DOCK = [
   { key: "chat", label: "Chat", title: "Chat with Inovo" },
-  { key: "tasks", label: "Tasks", title: "Upcoming tasks" },
+  { key: "tasks", label: "Tasks", title: "Tasks & meetings" },
+  { key: "people", label: "People", title: "People & outreach" },
   { key: "evidence", label: "Evidence", title: "Evidence" },
   { key: "tests", label: "Tests", title: "48-hour tests" },
   { key: "weekly", label: "Weekly", title: "Weekly review" },
@@ -792,6 +799,8 @@ function DockIcon({ name }) {
       return (<svg {...common}><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></svg>);
     case "tasks":
       return (<svg {...common}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8 12 3 3 5-6" /></svg>);
+    case "people":
+      return (<svg {...common}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" /></svg>);
     case "evidence":
       return (<svg {...common}><path d="M6 3h9l3 3v15H6z" /><path d="M9 10h6M9 14h6M9 18h4" /></svg>);
     case "tests":
