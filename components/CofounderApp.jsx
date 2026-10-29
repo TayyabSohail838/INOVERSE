@@ -12,6 +12,7 @@ import SimulatePanel from "@/components/SimulatePanel";
 import ChatOverview from "@/components/ChatOverview";
 import Globe from "@/components/Globe";
 import { ROLES, roleByKey, roleForSkill, roleForPanel } from "@/lib/roles";
+import { LiveVoice, liveSupported } from "@/lib/liveVoice";
 
 
 const STATE_TEXT = {
@@ -41,6 +42,9 @@ export default function CofounderApp() {
   const [roleKey, setRoleKey] = useState("cofounder"); // which hat Inovo is wearing (globe colour)
   const [rolePicker, setRolePicker] = useState(false);
   const [chatView, setChatView] = useState("talk"); // Chat panel: conversation or overview
+  const [liveOn, setLiveOn] = useState(true); // real-time voice (Gemini Live) instead of record → answer → speak
+  const [liveActive, setLiveActive] = useState(false);
+  const liveRef = useRef(null);
 
   const levelRef = useRef(0);
   const meterRef = useRef(null);
@@ -65,7 +69,13 @@ export default function CofounderApp() {
   }, [handsFree]);
   useEffect(() => {
     langRef.current = lang;
+    liveRef.current?.end();
   }, [lang]);
+  useEffect(() => {
+    if (!liveOn) return void liveRef.current?.end();
+    // get the company context ready now, so the first Talk starts faster
+    fetch("/api/live").catch(() => {});
+  }, [liveOn]);
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [log, tab]);
@@ -125,6 +135,7 @@ export default function CofounderApp() {
       cancelRecording();
       stopMeter();
       stopVoice();
+      liveRef.current?.end();
     };
   }, [loadStatus]);
 
@@ -344,7 +355,95 @@ export default function CofounderApp() {
     if (s.mr.state !== "inactive") s.mr.stop();
   }
 
+  // ---------- live voice: Gemini Live listens and talks, Gemma does the skills ----------
+  async function startLive() {
+    if (liveRef.current) return;
+    stopVoice();
+    setError("");
+    greetedRef.current = true;
+    const turn = { toolLogged: false };
+    const live = new LiveVoice({
+      onState: (s) => setState(s),
+      onLevel: (v) => (levelRef.current = v),
+      onUserText: (text, done) => {
+        progressRef.current = () => 1;
+        setCaption({ who: "you", text });
+        if (!done) return;
+        setLog((l) => [...l, { role: "user", text, live: true }]);
+        historyRef.current = [...historyRef.current, { role: "user", text }].slice(-8);
+      },
+      onInovoText: (text, done, { filler } = {}) => {
+        progressRef.current = () => 1;
+        setCaption({ who: "cofounder", text });
+        if (!done || filler) return;
+        // after a skill, its full answer is already in the chat: don't add the spoken summary too
+        if (turn.toolLogged) return void (turn.toolLogged = false);
+        setLog((l) => [...l, { role: "assistant", text, live: true }]);
+        historyRef.current = [...historyRef.current, { role: "assistant", text }].slice(-8);
+      },
+      // Live asks Gemma: the same route as typed questions (skills, emails, simulation, gap check…)
+      onTool: async (request) => {
+        const data = await api("/api/cofounder", {
+          method: "POST",
+          body: { message: request, history: historyRef.current, lang: langRef.current },
+        });
+        let action;
+        if (data.action?.type === "open_url" && /^https:\/\//.test(data.action.url)) {
+          const opened = window.open(data.action.url, "_blank");
+          if (opened) opened.opener = null;
+          action = { ...data.action, blocked: !opened };
+        }
+        const answeredAs = data.role || roleForSkill(data.skill);
+        if (answeredAs) setRoleKey(answeredAs);
+        setLog((l) => [
+          ...l,
+          { role: "assistant", text: data.details || data.say, skill: data.skill, gapCheck: data.gapCheck, experimentId: data.experimentId, action, simulation: data.simulation ? true : undefined, live: true },
+        ]);
+        historyRef.current = [...historyRef.current, { role: "assistant", text: data.details || data.say }].slice(-8);
+        turn.toolLogged = true;
+        return {
+          say: data.say,
+          skill: data.skill,
+          on_screen: String(data.details || "").slice(0, 2500),
+          ...(action?.blocked ? { note: "The browser blocked the new tab. Tell him to tap the Open button in the chat." } : {}),
+        };
+      },
+      onClose: (reason) => {
+        liveRef.current = null;
+        setLiveActive(false);
+        setCaption(null);
+        setState("idle");
+        if (reason) setError(reason);
+      },
+      onError: (msg) => setError(msg),
+    });
+    liveRef.current = live;
+    setLiveActive(true);
+    try {
+      await live.start(() => api("/api/live", { method: "POST", body: { lang: langRef.current, history: historyRef.current } }));
+    } catch (e) {
+      live.closed = true;
+      live.cleanup();
+      liveRef.current = null;
+      setLiveActive(false);
+      setState("idle");
+      if (e.name === "NotAllowedError") {
+        setError("The browser blocked the microphone. Click the icon left of the address bar, allow the microphone, then tap Talk again.");
+        return;
+      }
+      // Live not available (quota, network, old browser): use the standard voice instead
+      console.warn("Live voice unavailable, using the standard voice:", e.message);
+      greetedRef.current = false;
+      listen();
+    }
+  }
+
   function stop() {
+    if (liveRef.current) {
+      // while Inovo talks the button skips the rest of the answer; otherwise it ends the session
+      if (state === "speaking") return liveRef.current.interrupt();
+      return liveRef.current.end();
+    }
     if (state === "listening") return finishRecording();
     cancelRecording();
     stopMeter();
@@ -602,6 +701,12 @@ export default function CofounderApp() {
     if (!message) return;
     setTyped("");
     setError("");
+    if (liveRef.current?.ready) {
+      setLog((l) => [...l, { role: "user", text: message, live: true }]);
+      historyRef.current = [...historyRef.current, { role: "user", text: message }].slice(-8);
+      liveRef.current.sendText(message);
+      return;
+    }
     // first message typed before any Talk: greet you along with the answer
     const greet = !greetedRef.current;
     greetedRef.current = true;
@@ -681,6 +786,13 @@ export default function CofounderApp() {
             <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
             <button aria-pressed={lang === "ur"} onClick={() => setLang("ur")} lang="ur">اردو</button>
             <button aria-pressed={handsFree} onClick={() => setHandsFree((h) => !h)}>Hands-free</button>
+            <button
+              aria-pressed={liveOn}
+              onClick={() => setLiveOn((v) => !v)}
+              title="Live: real-time voice (Gemini Live) with Gemma behind it for every skill. Off: record, then answer, then speak."
+            >
+              Live
+            </button>
           </div>
         </header>
 
@@ -791,11 +903,13 @@ export default function CofounderApp() {
           )}
           <p className="state-line" aria-live="polite">{STATE_TEXT[state]}</p>
           {state === "idle" ? (
-            <button className="talk" onClick={() => listen()}>
+            <button className="talk" onClick={() => (liveOn && liveSupported() ? startLive() : listen())}>
               <MicIcon /> Talk
             </button>
           ) : (
-            <button className="talk stop" onClick={stop}>{state === "listening" ? "Done" : "Stop"}</button>
+            <button className="talk stop" onClick={stop}>
+              {liveActive ? (state === "speaking" ? "Skip" : "End") : state === "listening" ? "Done" : "Stop"}
+            </button>
           )}
         </div>
 

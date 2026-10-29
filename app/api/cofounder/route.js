@@ -2,6 +2,7 @@
 // → { skill, say, details, gapCheck?, gapCheckId?, experimentId?, action? }
 //   say     = short line the voice reads aloud
 //   details = full answer shown on screen
+import { after } from "next/server";
 import { gemma } from "@/lib/gemma";
 import { routerPrompt, parseRouterReply, buildSystemPrompt } from "@/lib/skills";
 import { runGapCheck } from "@/lib/gapCheck";
@@ -79,7 +80,9 @@ export const POST = route(async (req) => {
   // "Tell me about my latest email": read the inbox only when asked (sample emails on the public demo)
   if (detectEmailIntent(msg)) return Response.json(announce({ skill: "email", ...(await emailBrief({ lang })) }, lang));
 
-  const context = await buildContext();
+  // Load the company context while the router picks a skill, instead of one after the other.
+  const contextP = buildContext();
+  contextP.catch(() => {}); // the simulation doesn't need it; errors surface where it's awaited
   const { skill } = detectSimIntent(msg)
     ? { skill: "market-sim" }
     : parseRouterReply(await gemma(routerPrompt(msg), { temperature: 0, fast: true }));
@@ -90,11 +93,11 @@ export const POST = route(async (req) => {
     reply = await simulateForChat({ message: msg, lang });
   } else if (skill === "roast") {
     // The gap check before building anything; result + its 48-hour test are stored
-    const result = await runGapCheck({ idea: msg, context, lang });
+    const result = await runGapCheck({ idea: msg, context: await contextP, lang });
     const ids = await saveGapCheck(msg, result);
     reply = { skill, ...result, ...ids };
   } else {
-    const system = (await buildSystemPrompt(skill, context)) + VOICE_RULES(lang);
+    const system = (await buildSystemPrompt(skill, await contextP)) + VOICE_RULES(lang);
     let out;
     try {
       out = await gemma(msg, { system, history: hist, json: true, fast: true });
@@ -109,10 +112,13 @@ export const POST = route(async (req) => {
 
   reply = announce(reply, lang);
 
-  // Saving the chat must never cost the founder the answer. Demo visitors' chats aren't kept.
-  if (!isDemo()) await saveMessages([
-    { role: "user", text: msg },
-    { role: "assistant", text: reply.details || reply.say, skill },
-  ]).catch((err) => console.warn("Couldn't save the conversation:", err.message));
+  // Save the chat after the answer is sent, so the founder never waits on it. Demo visitors' chats aren't kept.
+  if (!isDemo())
+    after(() =>
+      saveMessages([
+        { role: "user", text: msg },
+        { role: "assistant", text: reply.details || reply.say, skill },
+      ]).catch((err) => console.warn("Couldn't save the conversation:", err.message))
+    );
   return Response.json(reply);
 });
