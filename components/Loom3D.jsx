@@ -132,9 +132,9 @@ export default function Loom3D({ state = "idle", levelRef, panel = null, verdict
       uThink: { value: 0 },
       uSpeak: { value: 0 },
       uMotion: { value: motion },
-      uWarp: { value: new THREE.Color("#E2A93B") },
-      uWeft: { value: new THREE.Color("#6F86D6") },
-      uTint: { value: new THREE.Color("#E2A93B") },
+      uWarp: { value: new THREE.Color("#22D3EE") },
+      uWeft: { value: new THREE.Color("#2F6BFF") },
+      uTint: { value: new THREE.Color("#22D3EE") },
       uTintMix: { value: 0 },
     };
     const weaveMat = new THREE.ShaderMaterial({
@@ -158,7 +158,7 @@ export default function Loom3D({ state = "idle", levelRef, panel = null, verdict
     }
     const fibreGeo = new THREE.BufferGeometry();
     fibreGeo.setAttribute("position", new THREE.BufferAttribute(fp, 3));
-    const fibreMat = new THREE.PointsMaterial({ color: "#EFE8DA", size: 0.012, transparent: true, opacity: 0.35, depthWrite: false });
+    const fibreMat = new THREE.PointsMaterial({ color: "#CFFAFE", size: 0.012, transparent: true, opacity: 0.35, depthWrite: false });
     const fibres = new THREE.Points(fibreGeo, fibreMat);
     root.add(fibres);
 
@@ -224,7 +224,14 @@ export default function Loom3D({ state = "idle", levelRef, panel = null, verdict
       const mic = st === "listening" ? Math.min(1, (levelRef?.current || 0) * 6) : 0;
       uniforms.uAmp.value = ease(uniforms.uAmp.value, mic * motion, 0.25);
       uniforms.uThink.value = ease(uniforms.uThink.value, st === "thinking" ? 1 : 0, 0.05);
-      speakLevel = st === "speaking" ? 0.55 + 0.45 * Math.abs(Math.sin(t * 7.1) * Math.sin(t * 3.3)) : 0;
+      // While speaking, follow the real voice level when we have it; otherwise a steady pulse
+      const voice = levelRef?.current || 0;
+      speakLevel =
+        st !== "speaking"
+          ? 0
+          : voice > 0.003
+            ? Math.min(1, 0.25 + voice * 7)
+            : 0.55 + 0.45 * Math.abs(Math.sin(t * 7.1) * Math.sin(t * 3.3));
       uniforms.uSpeak.value = ease(uniforms.uSpeak.value, speakLevel * motion, 0.2);
 
       if (vd && VERDICT_TINT[vd]) {

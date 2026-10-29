@@ -181,7 +181,7 @@ export function TestsPanel({ dbReady }) {
       {error && <p className="error" role="alert">{error}</p>}
       {saved && <p className="ok" role="status">{saved}</p>}
       {data.experiments.length === 0 ? (
-        <p className="muted">No tests yet. Ask the cofounder to check the gaps on an idea.</p>
+        <p className="muted">No tests yet. Ask Inovo to check the gaps on an idea.</p>
       ) : (
         <ul className="list">
           {data.experiments.map((x) => {
@@ -428,7 +428,7 @@ export function CompanyPanel({ dbReady }) {
 
   return (
     <div className="stack">
-      <p className="lead">Everything here is read by the cofounder before every answer. Keep it current.</p>
+      <p className="lead">Everything here is read by Inovo before every answer. Keep it current.</p>
       {error && <p className="error" role="alert">{error}</p>}
       {saved && <p className="ok" role="status">{saved}</p>}
 

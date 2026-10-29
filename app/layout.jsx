@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Inovix cofounder",
-  description: "A voice AI cofounder that checks the gaps before you build. Runs on Gemma.",
+  title: "Inoverse",
+  description: "Inoverse: talk with Inovo, the AI cofounder that checks the gaps before you build. Runs on Gemma.",
 };
 
 export const viewport = { themeColor: "#15183f" };

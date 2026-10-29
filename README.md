@@ -1,6 +1,6 @@
-# Inovix AI Cofounder
+# Inoverse
 
-A voice AI cofounder that checks the gaps before you build. It runs on Gemma and stores everything in Supabase.
+Inoverse is the app; Inovo is its voice AI cofounder for Inovix, who checks the gaps before you build. It runs on Gemma and stores everything in Supabase.
 
 At its centre is a 3D sphere woven from threads, in gold and indigo like cloth on a Faisalabad loom. The threads ripple with your voice, tighten while it thinks, and pulse while it speaks. Five reviewers orbit it. After a gap check, each reviewer moves closer the higher it scored, and the weave turns the colour of the verdict.
 
@@ -27,6 +27,10 @@ cp .env.example .env.local
    ```
    GEMMA_MODEL=gemma-4-26b-a4b-it
    ```
+   If the main model is down on Google's side, the app switches to `gemma-4-26b-a4b-it` for 5 minutes by itself (`GEMMA_FALLBACK_MODEL`, or `off`).
+5. Voice input (the Talk button) is transcribed with `gemini-3.5-flash` on the same key, because Gemma 4 31B cannot take audio. To change it, set `TRANSCRIBE_MODEL`.
+   Everyday conversation uses the quicker `gemma-4-26b-a4b-it` with minimal thinking so spoken replies come back in seconds (`GEMMA_FAST_MODEL`). The gap check and weekly review use `GEMMA_MODEL`.
+6. The cofounder answers out loud with `gemini-3.8-flash-tts` (voice `Charon`). Change with `TTS_MODEL` and `TTS_VOICE`. When you ask by voice, it listens again after answering, so you can keep talking; stay quiet for 10 seconds or press Stop to end.
 
 That's enough to talk to the cofounder. Without Supabase it reads `data/company-context.md` and saves nothing.
 
@@ -54,7 +58,28 @@ Open **http://localhost:3000** and allow the microphone. If something is missing
 
 Open the **Company** tab and add your teammate (name and role). The cofounder assigns tasks only to people listed there.
 
-### 4. Deploy (optional)
+### 4. Connect Gmail for tasks (optional, about 15 minutes)
+
+Inovo can read your upcoming tasks from email. It reads **only** emails whose subject starts with **Inovo**, for example `Inovo: pitch at NIC on Friday 3pm`. Gemma turns each one into a task with a due date, and Inovo reads your upcoming tasks before every answer.
+
+1. In Supabase → **SQL Editor** → **New query**, paste all of `supabase/tasks.sql` and click **Run**. (New installs get these tables from `schema.sql` already.)
+2. Go to **https://console.cloud.google.com** → create a project called **Inoverse**.
+3. **APIs & Services** → **Library** → search **Gmail API** → **Enable**.
+4. **Google Auth Platform** (or **OAuth consent screen**) → **Get started**: app name **Inoverse**, your email as support email, audience **External**. Under **Audience** → **Test users**, add your Gmail address.
+5. **Clients** (or **Credentials** → **Create credentials** → **OAuth client ID**) → type **Web application**. Under **Authorized redirect URIs** add `http://localhost:3000/api/google/callback` (and `https://<your-domain>/api/google/callback` if you deploy).
+6. Copy the **Client ID** and **Client secret** into `.env.local`:
+   ```
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   ```
+   Restart `npm run dev`.
+7. Open the **Tasks** tab → **Connect Gmail** → sign in. Google will warn that the app isn't verified; click **Continue**. It's your own app.
+
+Inoverse checks for new Inovo emails when it opens and every 5 minutes while it stays open. You can also add tasks by hand in the Tasks tab.
+
+While the Google app is in **Testing** mode, Google ends the sign-in after 7 days. When that happens the Tasks tab asks you to connect again.
+
+### 5. Deploy (optional)
 
 1. Push the project to GitHub and import it in **Vercel**.
 2. In Vercel → **Settings** → **Environment Variables**, add `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
@@ -79,7 +104,8 @@ Open the **Company** tab and add your teammate (name and role). The cofounder as
 
 ```
 Browser: 3D weave + voice + panel
-   │  speech → text            text → speech
+   │  mic recording            POST /api/speak (Gemini TTS: text → voice)
+   ├─ POST /api/transcribe (Gemini 3.5 Flash: speech → text)
    ▼
 POST /api/cofounder
    ├─ website command? ──► open a tab (no AI)
@@ -130,7 +156,7 @@ All routes return JSON. When `ACCESS_CODE` is set, send it in the `x-access-code
 
 ## Known limits
 
-- Voice input works in Chrome and Edge. Typing works everywhere.
+- Voice input needs a browser that can record audio (Chrome, Edge, Firefox, Safari). Typing works everywhere.
 - Few computers have an Urdu voice, so Roman Urdu is read by an English voice.
 - The Investigator has no web search; it uses only the Evidence tab.
 - A gap check makes 8 Gemma calls and takes 15–40 seconds.

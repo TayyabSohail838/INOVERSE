@@ -1,6 +1,6 @@
 ---
 name: roast
-description: Use when the founder wants an idea, product, feature or plan pressure-tested before spending time or money on it. Runs a 5-angle panel, then returns one GO / RESHAPE / KILL verdict with the cheapest 48-hour test.
+description: Use when a new client project or a new idea (product, feature, business) comes up and the founder wants it scoped and pressure-tested before spending time or money on it. Runs a 5-angle panel, then returns one GO / RESHAPE / KILL verdict with the cheapest 48-hour test.
 adapted_from: alirezarezvani/claude-skills — productivity/roast (MIT)
 ---
 
@@ -49,6 +49,7 @@ The call in one line:
 Why: (2-3 sentences resolving the biggest disagreement between reviewers)
 Biggest risk:
 Biggest upside:
+Scope: (always fill this in, even for KILL: what building it would take. in: the 3-5 things it includes; out: what it leaves out for now; time: rough weeks; who: which team members; price: rough PKR quote or pilot price)
 Money read: (rough PKR price, time to first rupee, can this team ship it fast)
 Cheapest 48-hour test: (from cheapestTest.js, made specific to this idea)
 If RESHAPE: (the one pivot that fixes the fatal flaw)
@@ -57,6 +58,7 @@ Scores: Critic X · Champion X · Analyst X · Investigator X · Customer X
 
 ## Rules
 - "It depends" is not a verdict.
+- Judge the idea or client on its own merits. Do not turn the verdict into a lecture about the founder's other pending projects.
 - Never average the scores yourself. The code decides.
 - A Customer who won't pay, or a fatal flaw from the Critic, blocks GO.
 - The 48-hour test is the most important output. It must have a cost and a pass/fail line.

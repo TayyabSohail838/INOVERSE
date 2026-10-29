@@ -15,8 +15,8 @@ export const maxDuration = 60;
 
 const VOICE_RULES = (lang) => `
 # HOW TO REPLY
-You are speaking out loud to the founder. Reply with ONLY this JSON:
-{"say": "1-2 short spoken sentences, the main point, no markdown, no lists",
+You are talking out loud with the founder, like a cofounder across the table. Reply with ONLY this JSON:
+{"say": "what you say out loud: 2-4 natural spoken sentences. Answer directly, give your honest view and the main reason. If it helps the discussion, end with one short question back to the founder. Plain words only: no markdown, no lists, no symbols, no headings.",
  "details": "the full answer in markdown for the screen"}
 ${lang === "ur" ? 'Write "say" in simple Roman Urdu. Write "details" in English.' : ""}`;
 
@@ -39,7 +39,7 @@ export const POST = route(async (req) => {
   }
 
   const context = await buildContext();
-  const { skill } = parseRouterReply(await gemma(routerPrompt(msg), { temperature: 0 }));
+  const { skill } = parseRouterReply(await gemma(routerPrompt(msg), { temperature: 0, fast: true }));
 
   let reply;
   if (skill === "roast") {
@@ -51,18 +51,19 @@ export const POST = route(async (req) => {
     const system = (await buildSystemPrompt(skill, context)) + VOICE_RULES(lang);
     let out;
     try {
-      out = await gemma(msg, { system, history: hist, json: true });
+      out = await gemma(msg, { system, history: hist, json: true, fast: true });
     } catch {
       // Model ignored the JSON format: speak the first sentence, show everything
-      const t = await gemma(msg, { system, history: hist });
+      const t = await gemma(msg, { system, history: hist, fast: true });
       out = { say: t.split(/(?<=[.!?])\s/)[0], details: t };
     }
     reply = { skill, say: out.say || "", details: out.details || out.say || "" };
   }
 
+  // Saving the chat must never cost the founder the answer.
   await saveMessages([
     { role: "user", text: msg },
     { role: "assistant", text: reply.details || reply.say, skill },
-  ]);
+  ]).catch((err) => console.warn("Couldn't save the conversation:", err.message));
   return Response.json(reply);
 });

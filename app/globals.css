@@ -1,18 +1,22 @@
-/* Inovix cofounder: colours taken from textile dyes.
-   indigo vat (ground), woad (lines), turmeric (warp, action), madder (kill/error),
-   malachite (go), raw cotton (text). */
+/* Inoverse styles. */
 :root {
-  --vat: #15183f;
-  --vat-deep: #0d0f2c;
-  --vat-raised: #1d2152;
-  --woad: #3a4f9e;
-  --woad-soft: #2a3478;
-  --turmeric: #e2a93b;
-  --turmeric-ink: #2b1d05;
-  --madder: #d0545f;
-  --malachite: #4fa67f;
-  --cotton: #efe8da;
-  --cotton-dim: #b3afc9;
+  /* Inoverse: cyan hologram. Variable names are kept from the first design
+     (vat = background, woad = lines, turmeric = accent/action, madder = error/stop,
+     malachite = you/go, cotton = text) so every panel picks up the new look. */
+  --vat: #04101f;
+  --vat-deep: #020812;
+  --vat-raised: #0a1b2e;
+  --woad: #1a6a8a;
+  --woad-soft: #123049;
+  --turmeric: #22d3ee;
+  --turmeric-ink: #01222b;
+  --madder: #f05a6e;
+  --malachite: #5eead4;
+  --cotton: #e3f6ff;
+  --cotton-dim: #8db4c8;
+  --glass: rgba(4, 18, 34, 0.72);
+  --glow: 0 0 0 1px rgba(34, 211, 238, 0.28), 0 0 24px rgba(34, 211, 238, 0.12);
+  --drawer-w: min(540px, 100vw);
   --radius-sm: 6px;
   --radius-lg: 14px;
   --font: "Bricolage Grotesque", system-ui, sans-serif;
@@ -74,7 +78,7 @@ textarea {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(60% 55% at 50% 48%, rgba(58, 79, 158, 0.28), transparent 70%),
+    radial-gradient(60% 55% at 50% 48%, rgba(34, 140, 180, 0.28), transparent 70%),
     var(--vat);
 }
 
@@ -110,8 +114,8 @@ textarea {
   width: 44%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: repeating-linear-gradient(0deg, rgba(111, 134, 214, 0.35) 0 1px, transparent 1px 9px),
-    repeating-linear-gradient(90deg, rgba(226, 169, 59, 0.35) 0 1px, transparent 1px 9px);
+  background: repeating-linear-gradient(0deg, rgba(47, 107, 255, 0.35) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(90deg, rgba(34, 211, 238, 0.35) 0 1px, transparent 1px 9px);
 }
 
 .council-label {
@@ -161,7 +165,7 @@ textarea {
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  background: rgba(13, 15, 44, 0.6);
+  background: rgba(2, 8, 18, 0.6);
   border: 1px solid var(--woad-soft);
 }
 
@@ -213,13 +217,107 @@ textarea {
   font-size: var(--step-1);
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 0 0 6px rgba(226, 169, 59, 0.14);
+  box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.14);
+}
+
+.stage-error {
+  width: min(620px, 100%);
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(240, 90, 110, 0.16);
+  border: 1px solid rgba(240, 90, 110, 0.6);
+  color: var(--cotton);
+  font-size: var(--step--1);
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* ---------- live voice caption (you / cofounder) ---------- */
+.voice-caption {
+  width: min(620px, 100%);
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  background: rgba(2, 8, 18, 0.72);
+  border: 1px solid var(--woad-soft);
+  backdrop-filter: blur(6px);
+  animation: vc-in 0.25s ease-out;
+}
+.voice-caption.is-you {
+  border-color: rgba(94, 234, 212, 0.55);
+}
+.voice-caption.is-cofounder {
+  border-color: rgba(34, 211, 238, 0.55);
+}
+@keyframes vc-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.vc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.vc-who {
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.is-you .vc-who {
+  color: var(--malachite);
+}
+.is-cofounder .vc-who {
+  color: var(--turmeric);
+}
+.vc-wave {
+  flex: 1;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.vc-wave i {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  transform: scaleY(0.08);
+  transition: transform 0.08s linear;
+}
+.is-you .vc-wave i {
+  background: var(--malachite);
+}
+.is-cofounder .vc-wave i {
+  background: var(--turmeric);
+}
+.vc-text {
+  margin: 0;
+  max-height: 4.6em;
+  overflow-y: auto;
+  line-height: 1.5;
+  color: var(--cotton);
+}
+.is-cofounder .vc-text span {
+  color: var(--cotton-dim);
+  opacity: 0.55;
+  transition: color 0.15s, opacity 0.15s;
+}
+.is-cofounder .vc-text span.said {
+  color: var(--cotton);
+  opacity: 1;
+}
+.is-cofounder .vc-text span.now {
+  color: var(--turmeric);
+  opacity: 1;
 }
 
 .talk.stop {
   background: var(--madder);
   color: var(--cotton);
-  box-shadow: 0 0 0 6px rgba(208, 84, 95, 0.16);
+  box-shadow: 0 0 0 6px rgba(240, 90, 110, 0.16);
 }
 
 /* ---------- panel ---------- */
@@ -259,8 +357,8 @@ textarea {
   margin: 12px 16px 0;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: rgba(226, 169, 59, 0.1);
-  border: 1px solid rgba(226, 169, 59, 0.35);
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.35);
   font-size: var(--step--1);
 }
 
@@ -302,7 +400,44 @@ textarea {
 }
 
 .msg.assistant .text {
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md > * {
+  margin: 0 0 0.6em;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+.md h4 {
+  margin-top: 0.9em;
+  font-size: 1.05em;
+  font-weight: 700;
+  color: var(--turmeric);
+}
+.md > h4:first-child {
+  margin-top: 0;
+}
+.md ul,
+.md ol {
+  padding-left: 1.3em;
+}
+.md li {
+  margin-bottom: 0.3em;
+}
+.md strong {
+  font-weight: 700;
+}
+.md code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.92em;
+}
+.md hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 0.9em 0;
 }
 
 .skill {
@@ -655,16 +790,16 @@ textarea::placeholder {
   border-radius: 999px;
   font-size: var(--step--1);
   font-weight: 700;
-  background: rgba(226, 169, 59, 0.16);
+  background: rgba(34, 211, 238, 0.16);
   color: var(--turmeric);
 }
 
 .pill.v-go {
-  background: rgba(79, 166, 127, 0.16);
+  background: rgba(94, 234, 212, 0.16);
   color: var(--malachite);
 }
 .pill.v-kill {
-  background: rgba(208, 84, 95, 0.16);
+  background: rgba(240, 90, 110, 0.16);
   color: var(--madder);
 }
 
@@ -676,7 +811,7 @@ textarea::placeholder {
 }
 
 .commit.stalled {
-  border-color: rgba(226, 169, 59, 0.6);
+  border-color: rgba(34, 211, 238, 0.6);
 }
 
 .actions {
@@ -768,5 +903,807 @@ textarea::placeholder {
   }
   .council-label {
     transition: none;
+  }
+}
+
+/* ---------- Tasks tab ---------- */
+.k-overdue {
+  color: var(--madder);
+}
+a.btn {
+  display: inline-block;
+  text-decoration: none;
+  justify-self: start;
+}
+
+/* ---------- HUD video behind Inovo ---------- */
+.stage-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.5;
+  pointer-events: none;
+}
+/* keeps the sphere and text readable over the video, and tints it toward the indigo palette */
+.stage-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 48% at 50% 50%, rgba(4, 16, 31, 0.78), rgba(4, 16, 31, 0.25) 70%, transparent),
+    linear-gradient(180deg, rgba(2, 8, 18, 0.75) 0%, rgba(2, 8, 18, 0.15) 22%, rgba(2, 8, 18, 0.15) 70%, rgba(2, 8, 18, 0.85) 100%);
+  mix-blend-mode: normal;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-video {
+    display: none;
+  }
+  .stage {
+    background-image: linear-gradient(rgba(4, 16, 31, 0.6), rgba(4, 16, 31, 0.6)), url("/inoverse-bg.jpg");
+    background-size: cover;
+    background-position: center;
+  }
+}
+
+/* ---------- Chat button + overview ---------- */
+.toggles .chat-btn {
+  background: var(--turmeric);
+  color: var(--turmeric-ink);
+  font-weight: 700;
+  margin-left: 4px;
+}
+.toggles .chat-btn:hover {
+  filter: brightness(1.08);
+}
+
+.ov-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 7, 22, 0.66);
+  backdrop-filter: blur(4px);
+  animation: vc-in 0.2s ease-out;
+}
+.ov {
+  width: min(920px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  background: var(--vat-deep);
+  border: 1px solid var(--woad-soft);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.ov-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 10px;
+}
+.ov-head h2 {
+  margin: 0;
+  font-size: var(--step-2);
+}
+.ov-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ov-close {
+  border: 1px solid var(--woad-soft);
+  background: transparent;
+  color: var(--cotton);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 15px;
+}
+.ov-close:hover {
+  background: var(--woad-soft);
+}
+.ov-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 22px 12px;
+  border-bottom: 1px solid var(--woad-soft);
+}
+.ov-nav button {
+  border: 1px solid var(--woad-soft);
+  background: rgba(34, 140, 180, 0.18);
+  color: var(--cotton);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: var(--step--1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ov-nav button:hover {
+  background: var(--woad-soft);
+}
+.ov-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--madder);
+  color: var(--cotton);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.ov-count.quiet {
+  background: var(--woad);
+}
+.ov-body {
+  overflow-y: auto;
+  padding: 6px 22px 24px;
+}
+.ov-sec {
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(18, 48, 73, 0.6);
+  scroll-margin-top: 8px;
+}
+.ov-sec:last-child {
+  border-bottom: 0;
+}
+.ov-sec h3 {
+  margin: 0 0 10px;
+  font-size: var(--step-1);
+  color: var(--turmeric);
+}
+.ov-sec h4 {
+  margin: 14px 0 6px;
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cotton-dim);
+}
+.ov-sec p {
+  margin: 0 0 6px;
+}
+.ov-list,
+.ov-issues,
+.ov-convo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ov-list li {
+  line-height: 1.45;
+}
+.ov-tag {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(34, 140, 180, 0.35);
+  font-size: 12px;
+  color: var(--cotton);
+}
+.ov-tag.bad,
+.ov-tag.v-kill {
+  background: rgba(240, 90, 110, 0.35);
+}
+.ov-tag.v-reshape {
+  background: rgba(34, 211, 238, 0.3);
+}
+.ov-tag.v-go {
+  background: rgba(94, 234, 212, 0.35);
+}
+.ov-convo li {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(8, 28, 46, 0.6);
+}
+.ov-convo li.user {
+  background: rgba(34, 140, 180, 0.35);
+}
+.ov-convo p {
+  margin: 2px 0 0;
+  line-height: 1.45;
+}
+.ov-who {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--turmeric);
+}
+.ov-convo li.user .ov-who {
+  color: var(--malachite);
+}
+.ov-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.ov-stats div {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(8, 28, 46, 0.7);
+  display: grid;
+}
+.ov-stats b {
+  font-size: var(--step-2);
+}
+.ov-stats span {
+  font-size: 12px;
+  color: var(--cotton-dim);
+}
+.ov-issues li {
+  padding: 8px 12px 8px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(8, 28, 46, 0.6);
+  border-left: 3px solid var(--woad);
+}
+.ov-issues li.lvl-high {
+  border-left-color: var(--madder);
+}
+.ov-issues li.lvl-med {
+  border-left-color: var(--turmeric);
+}
+.ov-from {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cotton-dim);
+}
+.warn {
+  color: var(--turmeric);
+}
+
+/* =====================================================================
+   Inoverse layout: Inovo center stage, dock, slide-in panels, intro.
+   (Comes last so it wins over the older two-column layout above.)
+   ===================================================================== */
+.app {
+  display: block;
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--vat-deep);
+}
+.stage {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 60% at 50% 45%, #06213a 0%, #020812 70%);
+}
+.stage-video {
+  opacity: 0.55;
+}
+.stage-shade {
+  background:
+    radial-gradient(34% 42% at 50% 46%, rgba(2, 8, 18, 0.72), rgba(2, 8, 18, 0.2) 70%, transparent),
+    linear-gradient(180deg, rgba(2, 8, 18, 0.8) 0%, rgba(2, 8, 18, 0.1) 18%, rgba(2, 8, 18, 0.1) 58%, rgba(2, 8, 18, 0.92) 100%);
+}
+
+/* when a panel is open on a wide screen, Inovo moves left to stay in view */
+.loom,
+.stage-foot,
+.stage-notices {
+  transition: right 0.35s ease;
+}
+@media (min-width: 1000px) {
+  .app.has-panel .loom,
+  .app.has-panel .stage-foot,
+  .app.has-panel .stage-notices {
+    right: var(--drawer-w);
+  }
+}
+
+/* ---------- top bar ---------- */
+.topbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 28px;
+}
+.brand {
+  display: grid;
+  line-height: 1.15;
+}
+.brand-name {
+  font-size: clamp(20px, 2.2vw, 28px);
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  color: var(--cotton);
+  text-shadow: 0 0 18px rgba(34, 211, 238, 0.55);
+}
+.brand-sub {
+  font-size: var(--step--1);
+  color: var(--cotton-dim);
+  letter-spacing: 0.04em;
+}
+.toggles {
+  background: var(--glass);
+  border-color: rgba(34, 211, 238, 0.22);
+  backdrop-filter: blur(8px);
+}
+.toggles button[aria-pressed="true"] {
+  background: rgba(34, 211, 238, 0.18);
+  color: var(--turmeric);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.45);
+}
+
+.stage-notices {
+  position: absolute;
+  top: 78px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  pointer-events: none;
+}
+.stage-notices > * {
+  width: min(620px, 100%);
+  margin: 0;
+  pointer-events: auto;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- bottom: caption, Talk, dock ---------- */
+.stage-foot {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 3;
+  gap: 10px;
+  padding: 0 24px 16px;
+}
+.talk {
+  min-width: 150px;
+  padding: 13px 34px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #67e8f9, #06b6d4);
+  color: #012027;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.14), 0 0 34px rgba(34, 211, 238, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.talk:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 7px rgba(34, 211, 238, 0.2), 0 0 44px rgba(34, 211, 238, 0.6);
+}
+.talk.stop {
+  background: linear-gradient(180deg, #ff8a9a, #e2475e);
+  color: #fff;
+  box-shadow: 0 0 0 6px rgba(240, 90, 110, 0.16), 0 0 30px rgba(240, 90, 110, 0.4);
+}
+.state-line {
+  letter-spacing: 0.03em;
+}
+.voice-caption {
+  background: rgba(2, 10, 22, 0.74);
+  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.08);
+}
+
+.dock {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--glass);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  max-width: 100%;
+  overflow-x: auto;
+}
+.dock button {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 72px;
+  padding: 8px 6px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--cotton-dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.dock button:hover {
+  color: var(--cotton);
+  background: rgba(34, 211, 238, 0.08);
+}
+.dock button.on {
+  color: var(--turmeric);
+  background: rgba(34, 211, 238, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.4);
+}
+.dock-dot {
+  position: absolute;
+  top: 6px;
+  right: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--turmeric);
+  box-shadow: 0 0 8px var(--turmeric);
+  animation: dock-pulse 1s ease-in-out infinite alternate;
+}
+@keyframes dock-pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+
+/* ---------- slide-in panel ---------- */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: var(--drawer-w);
+  display: flex;
+  flex-direction: column;
+  background: rgba(3, 12, 24, 0.88);
+  backdrop-filter: blur(16px);
+  border-left: 1px solid rgba(34, 211, 238, 0.25);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
+  transform: translateX(102%);
+  transition: transform 0.35s ease, visibility 0.35s;
+  visibility: hidden;
+}
+.drawer.open {
+  transform: none;
+  visibility: visible;
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--woad-soft);
+}
+.drawer-head h2 {
+  margin: 0;
+  font-size: var(--step-1);
+  letter-spacing: 0.05em;
+  color: var(--turmeric);
+}
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+.ov-close {
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+/* Chat panel: conversation / overview switch */
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: rgba(8, 28, 46, 0.8);
+  border: 1px solid var(--woad-soft);
+}
+.seg button {
+  flex: 1;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cotton-dim);
+  cursor: pointer;
+  font-size: var(--step--1);
+}
+.seg button[aria-selected="true"] {
+  background: rgba(34, 211, 238, 0.18);
+  color: var(--turmeric);
+}
+.chat-panel .talk-panel {
+  min-height: calc(100dvh - 160px);
+}
+.msg.user {
+  background: rgba(34, 140, 180, 0.28);
+}
+.ask {
+  background: rgba(3, 12, 24, 0.96);
+}
+.ov.ov-inline {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.ov-inline .ov-inline-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+.ov-inline .ov-nav {
+  position: sticky;
+  top: -20px;
+  z-index: 1;
+  padding: 10px 0;
+  background: rgba(3, 12, 24, 0.96);
+}
+.ov-inline .ov-body {
+  overflow: visible;
+  padding: 0;
+}
+
+/* small screens: the panel covers the stage; the dock stays compact */
+@media (max-width: 640px) {
+  .topbar {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+  .brand-sub {
+    display: none;
+  }
+  .dock button {
+    min-width: 50px;
+  }
+  .dock button span {
+    font-size: 10px;
+  }
+}
+
+/* ---------- intro: scroll to push into the hologram ---------- */
+.landing {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  transition: opacity 0.5s ease 0.25s;
+}
+.landing.leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.landing-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  outline: none;
+}
+.landing-scroll::-webkit-scrollbar {
+  display: none;
+}
+.landing-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+.landing-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.landing-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8vh;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  pointer-events: none;
+  text-align: center;
+}
+.landing-name {
+  font-size: clamp(30px, 5.5vw, 72px);
+  font-weight: 800;
+  letter-spacing: 0.45em;
+  padding-left: 0.45em; /* balances the letter spacing so the word sits centred */
+  color: #effcff;
+  text-shadow: 0 0 24px rgba(34, 211, 238, 0.8), 0 0 60px rgba(34, 211, 238, 0.35);
+}
+.landing-scrollcue {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  font-size: var(--step--1);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(227, 246, 255, 0.8);
+}
+.landing-scrollcue svg {
+  animation: cue-bounce 1.4s ease-in-out infinite;
+}
+@keyframes cue-bounce {
+  50% {
+    transform: translateY(6px);
+  }
+}
+.landing-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 50%, #ffffff 0%, #a5f3fc 35%, rgba(34, 211, 238, 0.4) 70%, transparent 100%);
+  transition: opacity 0.25s ease;
+}
+.landing.leaving .landing-flash {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-scrollcue svg {
+    animation: none;
+  }
+}
+
+/* keep the Conversation / Overview switch in view while the chat scrolls */
+.chat-panel .seg {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  margin: -20px -20px 16px;
+  border-radius: 0;
+  border-width: 0 0 1px;
+  padding: 10px 20px;
+  background: #030c18;
+}
+.chat-panel .seg button {
+  border: 1px solid transparent;
+}
+.ask {
+  padding-bottom: 24px;
+}
+
+/* no globe any more: let the HUD video show through, just keep the top and bottom readable */
+.stage-video {
+  opacity: 0.75;
+}
+.stage-shade {
+  background: linear-gradient(180deg, rgba(2, 8, 18, 0.75) 0%, rgba(2, 8, 18, 0.05) 18%, rgba(2, 8, 18, 0.05) 55%, rgba(2, 8, 18, 0.9) 100%);
+}
+
+/* ---------- voice effect on the chip in the middle of the HUD video ----------
+   The video covers the screen (object-fit: cover), so its height on screen is
+   max(screen height, screen width x 9/16). The chip ring sits 47.5% down the
+   video; this canvas is centred on it and sized from that height. */
+.voice-core {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 0.025 * max(100dvh, 56.25vw));
+  width: calc(0.8 * max(100dvh, 56.25vw));
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* clear, full-strength background: no dimming in the middle, only a light fade
+   at the top and bottom edges so the title, subtitles and dock stay readable */
+.stage-video {
+  opacity: 1;
+}
+.stage-shade {
+  background: linear-gradient(180deg, rgba(2, 8, 18, 0.55) 0%, transparent 14%, transparent 62%, rgba(2, 8, 18, 0.7) 100%);
+}
+
+/* ---------- the living HUD background (HudScene) ---------- */
+.hud-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* mouse parallax: leans a few pixels away from the pointer */
+  transform: translate3d(calc(var(--px, 0) * -16px), calc(var(--py, 0) * -10px), 0);
+}
+.hud-drift {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 48%;
+  animation: hud-drift 32s ease-in-out infinite alternate;
+  will-change: transform;
+}
+/* slow camera move; always zoomed in a little so the edges never show */
+@keyframes hud-drift {
+  0% {
+    transform: scale(1.05) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.09) translate(-1%, 0.6%);
+  }
+  100% {
+    transform: scale(1.06) translate(0.9%, -0.5%);
+  }
+}
+.hud-start {
+  z-index: 1;
+}
+.hud-live .hud-start {
+  display: none;
+}
+/* the voice effect fades in once the HUD has powered on */
+.voice-core {
+  z-index: 2;
+  transition: opacity 1.2s ease;
+}
+.hud-dark .voice-core,
+.hud-powering .voice-core {
+  opacity: 0;
+}
+/* lighting: a brief bloom as the HUD powers on */
+.hud-powering .hud-drift {
+  animation: hud-drift 32s ease-in-out infinite alternate, hud-bloom 2.4s ease-out;
+}
+@keyframes hud-bloom {
+  0% {
+    filter: brightness(0.6);
+  }
+  70% {
+    filter: brightness(1.35) saturate(1.2);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+/* lighting: a soft beam sweeps across the HUD every few seconds */
+.hud-sweep {
+  position: absolute;
+  inset: -10% -40%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(105deg, transparent 42%, rgba(120, 240, 255, 0.08) 47%, rgba(210, 252, 255, 0.2) 50%, rgba(120, 240, 255, 0.08) 53%, transparent 58%);
+  mix-blend-mode: screen;
+}
+.hud-live .hud-sweep {
+  opacity: 1;
+  animation: hud-sweep 9s ease-in-out 1s infinite;
+}
+@keyframes hud-sweep {
+  0% {
+    transform: translateX(-60%);
+  }
+  40%,
+  100% {
+    transform: translateX(60%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-scene {
+    transform: none;
+  }
+  .hud-drift,
+  .hud-powering .hud-drift {
+    animation: none;
+    transform: scale(1.02);
+  }
+  .hud-live .hud-sweep {
+    animation: none;
+    opacity: 0;
   }
 }
