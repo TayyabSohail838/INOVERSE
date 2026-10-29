@@ -504,21 +504,21 @@
   left: var(--edge);
   right: var(--edge);
   bottom: var(--edge);
-  /* three columns: the middle one is truly centred even though the side texts differ in length */
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* the two side items share the free space equally, so the middle one is truly
+     centred; text-align is set on each because .lp-close centres all its text */
+  display: flex;
+  align-items: baseline;
   gap: 16px;
   font-size: 12px;
   color: var(--cotton-dim);
 }
 .lp-foot > :first-child {
-  justify-self: start;
-}
-.lp-foot > :nth-child(2) {
-  justify-self: center;
+  flex: 1 1 0;
+  text-align: left;
 }
 .lp-foot > :last-child {
-  justify-self: end;
+  flex: 1 1 0;
+  text-align: right;
 }
 .lp-foot a {
   color: inherit;
@@ -609,13 +609,14 @@
   .lp-foot {
     position: static;
     margin-top: 56px;
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: center;
     gap: 4px;
-    justify-items: center;
   }
   .lp-foot > :first-child,
   .lp-foot > :last-child {
-    justify-self: center;
+    flex: none;
+    text-align: center;
   }
   .lp-close {
     justify-content: flex-end;
